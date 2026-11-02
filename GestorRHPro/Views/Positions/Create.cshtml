@@ -1,0 +1,7 @@
+@model GestorRHPro.Models.Position
+@{ ViewData["Title"]="Novo Cargo"; }
+<form asp-action="Create" method="post">
+<div class="mb-3"><label>Nome</label><input asp-for="Name" class="form-control"/></div>
+<div class="mb-3"><label>Departamento</label><select asp-for="DepartmentId" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(ViewBag.Departments,"Id","Name"))" class="form-select"></select></div>
+<button class="btn btn-primary">Guardar</button>
+</form>

@@ -1,0 +1,13 @@
+# Artefactos do .NET
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+
+# Bases de dados locais e ficheiros temporários
+GestorRHPro/*.db
+*.log
+
+# Segredos locais do ASP.NET Core
+**/appsettings.Local.json

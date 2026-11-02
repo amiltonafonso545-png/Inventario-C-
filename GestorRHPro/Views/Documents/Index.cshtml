@@ -1,0 +1,6 @@
+@model IEnumerable<GestorRHPro.Models.EmployeeDocument>
+@{ ViewData["Title"]="Documentos"; }
+<a asp-action="Create" class="btn btn-primary mb-3">Novo Documento</a>
+<table class="table"><thead><tr><th>Funcionário</th><th>Ficheiro</th><th>Categoria</th><th>Validade</th></tr></thead><tbody>
+@foreach(var d in Model){<tr><td>@d.Employee?.FullName</td><td><a href="@d.FilePath">@d.FileName</a></td><td>@d.Category</td><td>@d.ExpiryDate?.ToShortDateString()</td></tr>}
+</tbody></table>

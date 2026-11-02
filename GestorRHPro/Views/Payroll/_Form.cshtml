@@ -1,0 +1,19 @@
+@model GestorRHPro.ViewModels.PayrollFormViewModel
+@using System.Globalization
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+<form asp-action="@(Model.Id == 0 ? "Create" : "Edit")" method="post" class="surface-card data-form">
+    <input asp-for="Id" type="hidden" />
+    <div class="form-grid">
+        <div class="form-field span-2"><label asp-for="EmployeeId">Funcionário</label><select asp-for="EmployeeId" asp-items="ViewBag.Employees" class="form-select"><option value="">Selecione um funcionário</option></select><span asp-validation-for="EmployeeId" class="text-danger"></span></div>
+        <div class="form-field"><label asp-for="Year">Ano</label><input asp-for="Year" class="form-control" min="2000" max="2100" /><span asp-validation-for="Year" class="text-danger"></span></div>
+        <div class="form-field"><label asp-for="Month">Mês</label><select asp-for="Month" class="form-select">
+            @for (var month = 1; month <= 12; month++) { <option value="@month">@CultureInfo.GetCultureInfo("pt-PT").DateTimeFormat.GetMonthName(month)</option> }
+        </select><span asp-validation-for="Month" class="text-danger"></span></div>
+        <div class="form-field"><label asp-for="BaseSalary">Salário base (€)</label><input asp-for="BaseSalary" class="form-control" type="number" min="0" step="0.01" /><span asp-validation-for="BaseSalary" class="text-danger"></span></div>
+        <div class="form-field"><label asp-for="Bonuses">Suplementos (€)</label><input asp-for="Bonuses" class="form-control" type="number" min="0" step="0.01" /><span asp-validation-for="Bonuses" class="text-danger"></span></div>
+        <div class="form-field"><label asp-for="Deductions">Deduções (€)</label><input asp-for="Deductions" class="form-control" type="number" min="0" step="0.01" /><span asp-validation-for="Deductions" class="text-danger"></span></div>
+        <div class="form-field span-2"><label asp-for="Note">Nota (opcional)</label><textarea asp-for="Note" class="form-control" rows="3" maxlength="300"></textarea><span asp-validation-for="Note" class="text-danger"></span></div>
+    </div>
+    <p class="form-help">O valor líquido é calculado como salário base + suplementos − deduções. Não introduza dados bancários ou fiscais nesta nota.</p>
+    <div class="form-actions"><a asp-action="Index" class="btn btn-light">Cancelar</a><button type="submit" class="btn btn-brand">Guardar registo</button></div>
+</form>

@@ -1,0 +1,9 @@
+@model IEnumerable<GestorRHPro.Models.LeaveRequest>
+@{ ViewData["Title"]="Férias"; }
+<a asp-action="Create" class="btn btn-primary mb-3">Novo Pedido</a>
+<table class="table"><thead><tr><th>Funcionário</th><th>Início</th><th>Fim</th><th>Dias</th><th>Estado</th><th></th></tr></thead><tbody>
+@foreach(var l in Model){<tr><td>@l.Employee?.FullName</td><td>@l.StartDate.ToShortDateString()</td><td>@l.EndDate.ToShortDateString()</td><td>@l.Days</td><td>@l.Status</td><td>
+@if(l.Status==GestorRHPro.Models.LeaveStatus.Pending){<form asp-action="Approve" method="post" style="display:inline"><input type="hidden" name="id" value="@l.Id"/><button class="btn btn-sm btn-success">Aprovar</button></form>
+<form asp-action="Reject" method="post" style="display:inline"><input type="hidden" name="id" value="@l.Id"/><button class="btn btn-sm btn-danger">Rejeitar</button></form>}
+</td></tr>}
+</tbody></table>

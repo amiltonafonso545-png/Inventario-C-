@@ -1,0 +1,96 @@
+@using Microsoft.AspNetCore.Identity
+@using GestorRHPro.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+<!DOCTYPE html>
+<html lang="pt-PT" data-bs-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4d4383" />
+    <title>@ViewData["Title"] - GestorRH Pro</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+<div class="app-shell">
+    <aside class="app-sidebar">
+        <a class="brand" asp-controller="Home" asp-action="Index" aria-label="GestorRH Pro, página inicial">
+            <span class="brand-mark"><i class="bi bi-person-workspace"></i></span>
+            <span>GestorRH <strong>Pro</strong></span>
+        </a>
+        <div class="sidebar-label">MENU PRINCIPAL</div>
+        <nav class="sidebar-nav" aria-label="Navegação principal">
+            <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")" asp-controller="Home" asp-action="Index"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
+            @if (User.IsInRole("Administrator") || User.IsInRole("HRManager"))
+            {
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Attendance" ? "active" : "")" asp-controller="Attendance" asp-action="Index"><i class="bi bi-clock-history"></i><span>Assiduidade</span></a>
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Employees" ? "active" : "")" asp-controller="Employees" asp-action="Index"><i class="bi bi-people"></i><span>Funcionários</span></a>
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Departments" ? "active" : "")" asp-controller="Departments" asp-action="Index"><i class="bi bi-diagram-3"></i><span>Departamentos</span></a>
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "LeaveRequests" ? "active" : "")" asp-controller="LeaveRequests" asp-action="Index"><i class="bi bi-calendar2-week"></i><span>Férias</span></a>
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Payroll" ? "active" : "")" asp-controller="Payroll" asp-action="Index"><i class="bi bi-cash-stack"></i><span>Salários</span></a>
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Tasks" ? "active" : "")" asp-controller="Tasks" asp-action="Index"><i class="bi bi-list-check"></i><span>Tarefas</span></a>
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Positions" ? "active" : "")" asp-controller="Positions" asp-action="Index"><i class="bi bi-briefcase"></i><span>Cargos</span></a>
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" ? "active" : "")" asp-controller="Reports" asp-action="Index"><i class="bi bi-bar-chart-line"></i><span>Relatórios</span></a>
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Documents" ? "active" : "")" asp-controller="Documents" asp-action="Index"><i class="bi bi-folder2-open"></i><span>Documentos</span></a>
+            }
+        </nav>
+        <div class="sidebar-bottom">
+            <div class="sidebar-help-icon"><i class="bi bi-shield-check"></i></div>
+            <strong>Gestão segura</strong>
+            <span>Os dados da equipa estão disponíveis apenas a utilizadores autorizados.</span>
+        </div>
+    </aside>
+
+    <div class="app-content">
+        <header class="app-header">
+            <div class="header-context"><span class="header-kicker">GESTÃO DE PESSOAS</span><span class="header-page">@ViewData["Title"]</span></div>
+            <div class="header-actions">
+                <button id="themeToggle" class="theme-toggle" type="button" aria-label="Ativar modo escuro" title="Alternar tema"><i class="bi bi-moon-stars"></i><span>Modo escuro</span></button>
+                @if (SignInManager.IsSignedIn(User))
+                {
+                    <div class="user-summary">
+                        <span class="user-avatar">@((User.Identity?.Name ?? "U").Substring(0, 1).ToUpperInvariant())</span>
+                        <span class="user-meta"><strong>@User.Identity?.Name</strong><small>@(User.IsInRole("Administrator") ? "Administrador" : User.IsInRole("HRManager") ? "Recursos Humanos" : "Funcionário")</small></span>
+                    </div>
+                    <form asp-area="Identity" asp-page="/Account/Logout" method="post" class="logout-form">
+                        <button class="logout-button" type="submit" aria-label="Terminar sessão" title="Terminar sessão"><i class="bi bi-box-arrow-right"></i></button>
+                    </form>
+                }
+                else
+                {
+                    <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-brand">Iniciar sessão</a>
+                }
+            </div>
+        </header>
+        <main class="app-main">
+            @RenderBody()
+        </main>
+    </div>
+</div>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js" asp-append-version="true"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(() => {
+    const root = document.documentElement;
+    const button = document.getElementById('themeToggle');
+    const savedTheme = localStorage.getItem('gestorrh-theme');
+    if (savedTheme === 'dark') root.setAttribute('data-bs-theme', 'dark');
+    const updateButton = () => {
+        const dark = root.getAttribute('data-bs-theme') === 'dark';
+        button?.setAttribute('aria-label', dark ? 'Ativar modo claro' : 'Ativar modo escuro');
+        if (button) button.innerHTML = dark ? '<i class="bi bi-sun"></i><span>Modo claro</span>' : '<i class="bi bi-moon-stars"></i><span>Modo escuro</span>';
+    };
+    updateButton();
+    button?.addEventListener('click', () => {
+        const dark = root.getAttribute('data-bs-theme') !== 'dark';
+        root.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+        localStorage.setItem('gestorrh-theme', dark ? 'dark' : 'light');
+        updateButton();
+    });
+})();
+</script>
+@RenderSection("Scripts", required: false)
+</body>
+</html>

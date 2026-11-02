@@ -1,0 +1,5 @@
+@model GestorRHPro.ViewModels.TaskFormViewModel
+@{ ViewData["Title"] = "Nova tarefa"; }
+<div class="module-heading"><div><p class="eyebrow">EQUIPA</p><h1>Nova tarefa</h1><p class="text-secondary">Define o que é necessário fazer e, se aplicável, quem fica responsável.</p></div></div>
+<partial name="_Form" model="Model" />
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

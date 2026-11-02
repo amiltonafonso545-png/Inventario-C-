@@ -1,0 +1,17 @@
+@model IEnumerable<GestorRHPro.Models.Employee>
+@{ ViewData["Title"]="Funcionários"; }
+<a asp-action="Create" class="btn btn-primary mb-3">Novo Funcionário</a>
+<table class="table table-striped">
+<thead><tr><th>Nome</th><th>Email</th><th>Departamento</th><th>Cargo</th><th>Estado</th><th></th></tr></thead>
+<tbody>
+@foreach(var e in Model){
+<tr>
+<td>@e.FullName</td><td>@e.Email</td><td>@e.Department?.Name</td><td>@e.Position?.Name</td><td>@e.Status</td>
+<td>
+<a asp-action="Details" asp-route-id="@e.Id" class="btn btn-sm btn-info">Ver</a>
+<a asp-action="Edit" asp-route-id="@e.Id" class="btn btn-sm btn-warning">Editar</a>
+<a asp-action="Delete" asp-route-id="@e.Id" class="btn btn-sm btn-danger">Eliminar</a>
+</td>
+</tr>
+}
+</tbody></table>

@@ -1,0 +1,12 @@
+@model GestorRHPro.Models.Employee
+@{ ViewData["Title"]="Editar Funcionário"; }
+<form asp-action="Edit" method="post">
+<input type="hidden" asp-for="Id"/>
+<div class="mb-3"><label>Nome</label><input asp-for="FullName" class="form-control"/></div>
+<div class="mb-3"><label>Email</label><input asp-for="Email" class="form-control"/></div>
+<div class="mb-3"><label>Telefone</label><input asp-for="Phone" class="form-control"/></div>
+<div class="mb-3"><label>Departamento</label><select asp-for="DepartmentId" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(ViewBag.Departments,"Id","Name"))" class="form-select"></select></div>
+<div class="mb-3"><label>Cargo</label><select asp-for="PositionId" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(ViewBag.Positions,"Id","Name"))" class="form-select"></select></div>
+<div class="mb-3"><label>Estado</label><select asp-for="Status" class="form-select"><option>Active</option><option>Inactive</option><option>OnLeave</option></select></div>
+<button class="btn btn-primary">Guardar</button>
+</form>

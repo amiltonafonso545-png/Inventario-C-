@@ -1,0 +1,14 @@
+@model GestorRHPro.ViewModels.TaskFormViewModel
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+<form asp-action="@(Model.Id == 0 ? "Create" : "Edit")" method="post" class="surface-card data-form">
+    <input asp-for="Id" type="hidden" />
+    <div class="form-grid">
+        <div class="form-field span-2"><label asp-for="Title">Título</label><input asp-for="Title" class="form-control" maxlength="120" /><span asp-validation-for="Title" class="text-danger"></span></div>
+        <div class="form-field span-2"><label asp-for="Description">Descrição (opcional)</label><textarea asp-for="Description" class="form-control" rows="4" maxlength="1000"></textarea><span asp-validation-for="Description" class="text-danger"></span></div>
+        <div class="form-field"><label asp-for="AssignedEmployeeId">Responsável</label><select asp-for="AssignedEmployeeId" asp-items="ViewBag.Employees" class="form-select"><option value="">Por atribuir</option></select><span asp-validation-for="AssignedEmployeeId" class="text-danger"></span></div>
+        <div class="form-field"><label asp-for="DueDate">Prazo</label><input asp-for="DueDate" class="form-control" type="date" /><span asp-validation-for="DueDate" class="text-danger"></span></div>
+        <div class="form-field"><label asp-for="Priority">Prioridade</label><select asp-for="Priority" class="form-select"><option value="Low">Baixa</option><option value="Normal">Normal</option><option value="High">Alta</option></select></div>
+        <div class="form-field"><label asp-for="Status">Estado</label><select asp-for="Status" class="form-select"><option value="ToDo">Por iniciar</option><option value="InProgress">Em curso</option><option value="Done">Concluída</option></select></div>
+    </div>
+    <div class="form-actions"><a asp-action="Index" class="btn btn-light">Cancelar</a><button type="submit" class="btn btn-brand">Guardar tarefa</button></div>
+</form>

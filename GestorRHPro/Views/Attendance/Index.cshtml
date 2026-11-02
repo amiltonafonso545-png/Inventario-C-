@@ -1,0 +1,5 @@
+@model IEnumerable<GestorRHPro.Models.Attendance>
+@{ ViewData["Title"]="Assiduidade"; }
+<table class="table"><thead><tr><th>Funcionário</th><th>Data</th><th>Entrada</th><th>Saída</th><th>Estado</th></tr></thead><tbody>
+@foreach(var a in Model){<tr><td>@a.Employee?.FullName</td><td>@a.Date.ToShortDateString()</td><td>@a.CheckIn</td><td>@a.CheckOut</td><td>@a.Status</td></tr>}
+</tbody></table>

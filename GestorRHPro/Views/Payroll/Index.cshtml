@@ -1,0 +1,46 @@
+@model IReadOnlyList<GestorRHPro.Models.PayrollRecord>
+@using System.Globalization
+@{
+    ViewData["Title"] = "Salários";
+    var pt = CultureInfo.GetCultureInfo("pt-PT");
+    var total = Model.Sum(record => record.NetSalary);
+}
+<div class="module-heading">
+    <div><p class="eyebrow">GESTÃO DE COMPENSAÇÕES</p><h1>Registos salariais</h1><p class="text-secondary">Valores mensais por funcionário. Acesso restrito a Administrador e RH.</p></div>
+    <a asp-action="Create" class="btn btn-brand"><i class="bi bi-plus-lg me-2"></i>Novo salário</a>
+</div>
+<div class="module-summary-row">
+    <div class="module-summary"><span>Total líquido registado</span><strong>@total.ToString("C", pt)</strong></div>
+    <div class="module-summary"><span>Registos</span><strong>@Model.Count</strong></div>
+</div>
+<div class="surface-card module-table-card">
+    @if (Model.Count == 0)
+    {
+        <div class="empty-state"><i class="bi bi-cash-coin"></i><span>Ainda não existem registos salariais.</span><a asp-action="Create">Adicionar o primeiro registo</a></div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle module-table mb-0">
+                <thead><tr><th>Funcionário</th><th>Período</th><th>Salário base</th><th>Suplementos</th><th>Deduções</th><th>Valor líquido</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var record in Model)
+                {
+                    <tr>
+                        <td><strong>@record.Employee.FullName</strong><small>@record.Employee.InternalNumber</small></td>
+                        <td>@pt.DateTimeFormat.GetMonthName(record.Month) @record.Year</td>
+                        <td>@record.BaseSalary.ToString("C", pt)</td>
+                        <td>@record.Bonuses.ToString("C", pt)</td>
+                        <td>@record.Deductions.ToString("C", pt)</td>
+                        <td><strong>@record.NetSalary.ToString("C", pt)</strong></td>
+                        <td class="module-actions">
+                            <a asp-action="Edit" asp-route-id="@record.Id" class="icon-link" aria-label="Editar salário de @record.Employee.FullName"><i class="bi bi-pencil"></i></a>
+                            <form asp-action="Delete" asp-route-id="@record.Id" method="post" onsubmit="return confirm('Eliminar este registo salarial?')"><button class="icon-link danger-link" type="submit" aria-label="Eliminar registo"><i class="bi bi-trash"></i></button></form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

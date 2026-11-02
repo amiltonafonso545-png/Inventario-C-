@@ -1,0 +1,272 @@
+@model GestorRHPro.ViewModels.DashboardViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Dashboard";
+    var firstDay = new DateTime(Model.Today.Year, Model.Today.Month, 1);
+    var leadingDays = ((int)firstDay.DayOfWeek + 6) % 7;
+    var calendarCells = Enumerable.Repeat<int?>(null, leadingDays)
+        .Concat(Enumerable.Range(1, DateTime.DaysInMonth(Model.Today.Year, Model.Today.Month)).Select(day => (int?)day))
+        .ToArray();
+    var leaveDays = Model.UpcomingLeaves
+        .Where(leave => leave.StartDate.Year == Model.Today.Year && leave.StartDate.Month == Model.Today.Month)
+        .Select(leave => leave.StartDate.Day)
+        .ToHashSet();
+    var monthName = Model.Today.ToString("MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("pt-PT"));
+    var greeting = DateTime.Now.Hour < 12 ? "Bom dia" : DateTime.Now.Hour < 19 ? "Boa tarde" : "Boa noite";
+    var openTasks = Model.TasksToDo + Model.TasksInProgress;
+}
+
+<div class="dashboard-page">
+    <section class="dashboard-main">
+        <div class="dashboard-heading">
+            <div>
+                <p class="eyebrow">@Model.Today.ToString("dddd, d 'de' MMMM 'de' yyyy", System.Globalization.CultureInfo.GetCultureInfo("pt-PT"))</p>
+                <h1>@greeting, @(User.Identity?.Name?.Split('@')[0])</h1>
+                <p class="text-secondary mb-0">Aqui está o resumo atualizado da sua equipa.</p>
+            </div>
+            <a asp-controller="Employees" asp-action="Create" class="btn btn-brand"><i class="bi bi-person-plus me-2"></i>Novo funcionário</a>
+        </div>
+
+        <div class="stats-grid">
+            <article class="stat-card">
+                <div class="stat-icon icon-violet"><i class="bi bi-people"></i></div>
+                <div class="stat-label">Total de funcionários</div>
+                <div class="stat-value">@Model.TotalEmployees.ToString("N0")</div>
+                <div class="stat-foot"><span class="stat-note">@Model.ActiveEmployees ativos</span><span class="trend-neutral"><i class="bi bi-person-check"></i></span></div>
+            </article>
+            <article class="stat-card">
+                <div class="stat-icon icon-teal"><i class="bi bi-person-check"></i></div>
+                <div class="stat-label">Funcionários ativos</div>
+                <div class="stat-value">@Model.ActiveEmployees.ToString("N0")</div>
+                <div class="stat-foot"><span class="stat-note">@Model.InactiveEmployees inativos</span><span class="trend-neutral"><i class="bi bi-people"></i></span></div>
+            </article>
+            <article class="stat-card">
+                <div class="stat-icon icon-blue"><i class="bi bi-cash-stack"></i></div>
+                <div class="stat-label">Salários deste mês</div>
+                <div class="stat-value stat-currency">@Model.CurrentMonthPayroll.ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("pt-PT"))</div>
+                <div class="stat-foot"><span class="stat-note">@Model.PayrollEmployeesThisMonth registos salariais</span><span class="trend-neutral"><i class="bi bi-receipt"></i></span></div>
+            </article>
+            <article class="stat-card">
+                <div class="stat-icon icon-amber"><i class="bi bi-list-check"></i></div>
+                <div class="stat-label">Tarefas em aberto</div>
+                <div class="stat-value">@openTasks.ToString("N0")</div>
+                <div class="stat-foot"><span class="stat-note">@Model.TasksOverdue atrasadas</span><span class="trend-neutral"><i class="bi bi-clipboard2-check"></i></span></div>
+            </article>
+        </div>
+
+        <div class="dashboard-content-grid">
+            <section class="surface-card payroll-card">
+                <div class="card-heading">
+                    <div><h2>Massa salarial</h2><p>Valores líquidos registados nos últimos 12 meses</p></div>
+                    <div class="payroll-heading-value"><span>Este mês</span><strong>@Model.CurrentMonthPayroll.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-PT"))</strong><a asp-controller="Payroll" asp-action="Index">Ver salários <i class="bi bi-arrow-right"></i></a></div>
+                </div>
+                @if (Model.PayrollMonthTotals.Any(value => value > 0))
+                {
+                    <div class="chart-wrap"><canvas id="payrollChart" aria-label="Gráfico da massa salarial dos últimos 12 meses"></canvas></div>
+                }
+                else
+                {
+                    <div class="empty-chart payroll-empty"><i class="bi bi-cash-coin"></i><span>Ainda não há salários registados nestes meses.</span><a asp-controller="Payroll" asp-action="Create">Registar salário</a></div>
+                }
+            </section>
+
+            <section class="surface-card task-overview-card">
+                <div class="card-heading">
+                    <div><h2>Tarefas</h2><p>Estado atual do trabalho</p></div>
+                    <a asp-controller="Tasks" asp-action="Create" class="icon-link" aria-label="Criar tarefa"><i class="bi bi-plus-lg"></i></a>
+                </div>
+                <div class="task-status-list">
+                    <div><span class="task-status-label"><i class="task-dot task-dot-todo"></i>Por iniciar</span><strong>@Model.TasksToDo</strong></div>
+                    <div><span class="task-status-label"><i class="task-dot task-dot-progress"></i>Em curso</span><strong>@Model.TasksInProgress</strong></div>
+                    <div><span class="task-status-label"><i class="task-dot task-dot-done"></i>Concluídas</span><strong>@Model.TasksDone</strong></div>
+                    <div><span class="task-status-label"><i class="task-dot task-dot-overdue"></i>Atrasadas</span><strong>@Model.TasksOverdue</strong></div>
+                </div>
+                @if (Model.UpcomingTasks.Count > 0)
+                {
+                    <div class="task-preview-list">
+                        @foreach (var task in Model.UpcomingTasks)
+                        {
+                            <a asp-controller="Tasks" asp-action="Index" class="task-preview">
+                                <span><strong>@task.Title</strong><small>@(task.EmployeeName ?? "Por atribuir")</small></span>
+                                <time>@(task.DueDate?.ToString("dd/MM") ?? "—")</time>
+                            </a>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="task-preview-empty">Ainda não existem tarefas com prazo por concluir.</div>
+                }
+                <a asp-controller="Tasks" asp-action="Index" class="task-view-all">Abrir gestão de tarefas <i class="bi bi-arrow-right"></i></a>
+            </section>
+
+            <section class="surface-card attendance-card">
+                <div class="card-heading">
+                    <div><h2>Assiduidade de hoje</h2><p>Registos existentes na base de dados</p></div>
+                    <a asp-controller="Attendance" asp-action="Index" class="icon-link" aria-label="Ver assiduidade"><i class="bi bi-arrow-up-right"></i></a>
+                </div>
+                <div class="attendance-total"><strong>@(Model.PresentToday + Model.AbsentToday)</strong><span>registos</span></div>
+                <div class="attendance-bar" role="img" aria-label="Presenças e faltas registadas">
+                    @{ var attendanceTotal = Model.PresentToday + Model.AbsentToday; var presentPercent = attendanceTotal == 0 ? 0 : (int)Math.Round((double)Model.PresentToday / attendanceTotal * 100); }
+                    <span class="attendance-present" style="width:@presentPercent%"></span>
+                    <span class="attendance-absent" style="width:@(100 - presentPercent)%"></span>
+                </div>
+                <div class="attendance-legend">
+                    <div><span class="legend-dot dot-green"></span><span>Presentes</span><strong>@Model.PresentToday</strong></div>
+                    <div><span class="legend-dot dot-red"></span><span>Faltas registadas</span><strong>@Model.AbsentToday</strong></div>
+                    <div><span class="legend-dot dot-muted"></span><span>Inativos</span><strong>@Model.InactiveEmployees</strong></div>
+                </div>
+            </section>
+
+            <section class="surface-card department-card">
+                <div class="card-heading">
+                    <div><h2>Equipa por departamento</h2><p>Distribuição atual dos funcionários</p></div>
+                    <a asp-controller="Departments" asp-action="Index" class="icon-link" aria-label="Ver departamentos"><i class="bi bi-arrow-up-right"></i></a>
+                </div>
+                @if (Model.DepartmentValues.Any(value => value > 0))
+                {
+                    <div class="department-chart-wrap"><canvas id="departmentChart" aria-label="Gráfico de funcionários por departamento"></canvas></div>
+                    <ul class="department-legend" id="departmentLegend"></ul>
+                }
+                else
+                {
+                    <div class="empty-chart"><i class="bi bi-pie-chart"></i><span>Ainda não existem funcionários associados a departamentos.</span></div>
+                }
+            </section>
+
+            <section class="surface-card recent-card">
+                <div class="card-heading recent-heading">
+                    <div><h2>Funcionários recentes</h2><p>Últimas admissões registadas</p></div>
+                    <form asp-controller="Employees" asp-action="Index" method="get" class="employee-search">
+                        <i class="bi bi-search"></i>
+                        <input type="search" name="search" placeholder="Pesquisar funcionário" aria-label="Pesquisar funcionário" />
+                        <button type="submit">Pesquisar</button>
+                    </form>
+                </div>
+                @if (Model.RecentEmployees.Count == 0)
+                {
+                    <div class="empty-state"><i class="bi bi-person-lines-fill"></i><span>Ainda não existem funcionários registados.</span><a asp-controller="Employees" asp-action="Create">Adicionar funcionário</a></div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table recent-table align-middle mb-0">
+                            <thead><tr><th>Funcionário</th><th>Departamento</th><th>Admissão</th><th>Estado</th><th></th></tr></thead>
+                            <tbody>
+                            @foreach (var employee in Model.RecentEmployees)
+                            {
+                                <tr>
+                                    <td><div class="employee-cell"><span class="employee-avatar">@employee.FullName.Trim().Substring(0, 1).ToUpperInvariant()</span><span><strong>@employee.FullName</strong><small>@employee.InternalNumber</small></span></div></td>
+                                    <td>@(employee.Department ?? "Sem departamento")</td>
+                                    <td>@employee.HireDate.ToString("dd/MM/yyyy")</td>
+                                    <td><span class="status-pill @(employee.Status == "Active" ? "status-active" : employee.Status == "OnLeave" ? "status-leave" : "status-inactive")">@(employee.Status == "Active" ? "Ativo" : employee.Status == "OnLeave" ? "De férias" : "Inativo")</span></td>
+                                    <td><a asp-controller="Employees" asp-action="Details" asp-route-id="@employee.Id" class="icon-link" aria-label="Ver @employee.FullName"><i class="bi bi-chevron-right"></i></a></td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        </div>
+    </section>
+
+    <aside class="dashboard-rail">
+        <section class="surface-card calendar-card">
+            <div class="rail-heading"><div><h2>Calendário</h2><p>@monthName</p></div><i class="bi bi-calendar3"></i></div>
+            <div class="calendar-weekdays"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span></div>
+            <div class="calendar-days">
+                @foreach (var day in calendarCells)
+                {
+                    if (day.HasValue)
+                    {
+                        <span class="calendar-day @(day.Value == Model.Today.Day ? "is-today" : "") @(leaveDays.Contains(day.Value) ? "has-leave" : "")">@day.Value@if (leaveDays.Contains(day.Value)) { <i></i> }</span>
+                    }
+                    else
+                    {
+                        <span class="calendar-day calendar-empty"></span>
+                    }
+                }
+            </div>
+            <div class="calendar-key"><span><i class="today-key"></i>Hoje</span><span><i class="leave-key"></i>Início de férias</span></div>
+        </section>
+
+        <section class="surface-card leave-card">
+            <div class="rail-heading"><div><h2>Férias a acompanhar</h2><p>@Model.PendingLeaveRequests pedidos pendentes</p></div><a asp-controller="LeaveRequests" asp-action="Index" class="rail-view-all">Ver todos</a></div>
+            @if (Model.UpcomingLeaves.Count == 0)
+            {
+                <div class="rail-empty">Não existem pedidos pendentes ou férias futuras.</div>
+            }
+            else
+            {
+                <div class="leave-list">
+                    @foreach (var leave in Model.UpcomingLeaves)
+                    {
+                        <div class="leave-item">
+                            <span class="leave-avatar"><i class="bi bi-person"></i></span>
+                            <div class="leave-person"><strong>@leave.EmployeeName</strong><span>@leave.StartDate.ToString("dd MMM", System.Globalization.CultureInfo.GetCultureInfo("pt-PT")) – @leave.EndDate.ToString("dd MMM", System.Globalization.CultureInfo.GetCultureInfo("pt-PT"))</span></div>
+                            <span class="leave-status @(leave.Status == "Pending" ? "leave-pending" : "leave-approved")">@(leave.Status == "Pending" ? "Pendente" : "Aprovado")</span>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="surface-card quick-card">
+            <div class="rail-heading"><div><h2>Acesso rápido</h2><p>Áreas de gestão</p></div><i class="bi bi-lightning-charge"></i></div>
+            <a asp-controller="Employees" asp-action="Index"><span><i class="bi bi-people"></i>Funcionários</span><i class="bi bi-chevron-right"></i></a>
+            <a asp-controller="LeaveRequests" asp-action="Index"><span><i class="bi bi-calendar2-week"></i>Pedidos de férias</span><i class="bi bi-chevron-right"></i></a>
+            <a asp-controller="Payroll" asp-action="Index"><span><i class="bi bi-cash-stack"></i>Salários</span><i class="bi bi-chevron-right"></i></a>
+            <a asp-controller="Tasks" asp-action="Index"><span><i class="bi bi-list-check"></i>Tarefas</span><i class="bi bi-chevron-right"></i></a>
+            <a asp-controller="Attendance" asp-action="Index"><span><i class="bi bi-clock-history"></i>Assiduidade</span><i class="bi bi-chevron-right"></i></a>
+            <a asp-controller="Reports" asp-action="Index"><span><i class="bi bi-file-earmark-bar-graph"></i>Relatórios</span><i class="bi bi-chevron-right"></i></a>
+        </section>
+    </aside>
+</div>
+
+@section Scripts {
+    <script>
+        const payrollLabels = @Html.Raw(JsonSerializer.Serialize(Model.PayrollMonthLabels));
+        const payrollValues = @Html.Raw(JsonSerializer.Serialize(Model.PayrollMonthTotals));
+        const departmentLabels = @Html.Raw(JsonSerializer.Serialize(Model.DepartmentLabels));
+        const departmentValues = @Html.Raw(JsonSerializer.Serialize(Model.DepartmentValues));
+        const chartColors = ['#5665d8', '#57bfa8', '#8c83e8', '#efb85c', '#e7859a', '#7a9bdd', '#57a6b8', '#a7b2ce'];
+
+        if (window.Chart) {
+            const payrollCanvas = document.getElementById('payrollChart');
+            if (payrollCanvas) {
+                const context = payrollCanvas.getContext('2d');
+                const fill = context.createLinearGradient(0, 0, 0, 260);
+                fill.addColorStop(0, 'rgba(86, 101, 216, .27)');
+                fill.addColorStop(1, 'rgba(86, 101, 216, 0)');
+                new Chart(context, {
+                    type: 'line',
+                    data: { labels: payrollLabels, datasets: [{ data: payrollValues, fill: true, backgroundColor: fill, borderColor: '#5665d8', borderWidth: 3, pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: '#5665d8', pointBorderWidth: 2, tension: .38 }] },
+                    options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { displayColors: false, callbacks: { label: item => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(item.raw) } } }, scales: { x: { grid: { display: false }, border: { display: false }, ticks: { color: '#81869b' } }, y: { beginAtZero: true, border: { display: false }, grid: { color: 'rgba(130,138,166,.12)' }, ticks: { color: '#81869b', callback: value => new Intl.NumberFormat('pt-PT', { notation: 'compact', style: 'currency', currency: 'EUR' }).format(value) } } } }
+                });
+            }
+
+            const departmentCanvas = document.getElementById('departmentChart');
+            if (departmentCanvas) {
+                new Chart(departmentCanvas, {
+                    type: 'doughnut',
+                    data: { labels: departmentLabels, datasets: [{ data: departmentValues, backgroundColor: chartColors, borderWidth: 0, hoverOffset: 5 }] },
+                    options: { cutout: '70%', maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: item => ` ${item.label}: ${item.raw}` } } } }
+                });
+                const legend = document.getElementById('departmentLegend');
+                departmentLabels.slice(0, 6).forEach((label, index) => {
+                    const item = document.createElement('li');
+                    const marker = document.createElement('span');
+                    marker.className = 'legend-dot';
+                    marker.style.backgroundColor = chartColors[index % chartColors.length];
+                    const name = document.createElement('span');
+                    name.textContent = label;
+                    const value = document.createElement('strong');
+                    value.textContent = departmentValues[index];
+                    item.append(marker, name, value);
+                    legend.append(item);
+                });
+            }
+        }
+    </script>
+}

@@ -1,0 +1,53 @@
+@model IReadOnlyList<GestorRHPro.Models.TaskItem>
+@{
+    ViewData["Title"] = "Tarefas";
+    var openCount = Model.Count(task => task.Status != GestorRHPro.Models.WorkItemStatus.Done);
+    var overdueCount = Model.Count(task => task.Status != GestorRHPro.Models.WorkItemStatus.Done && task.DueDate.HasValue && task.DueDate.Value.Date < DateTime.Today);
+}
+<div class="module-heading">
+    <div><p class="eyebrow">ORGANIZAÇÃO DA EQUIPA</p><h1>Tarefas</h1><p class="text-secondary">Atribui tarefas, acompanha os prazos e atualiza o estado.</p></div>
+    <a asp-action="Create" class="btn btn-brand"><i class="bi bi-plus-lg me-2"></i>Nova tarefa</a>
+</div>
+<div class="module-summary-row">
+    <div class="module-summary"><span>Tarefas em aberto</span><strong>@openCount</strong></div>
+    <div class="module-summary"><span>Atrasadas</span><strong>@overdueCount</strong></div>
+    <div class="module-summary"><span>Concluídas</span><strong>@Model.Count(task => task.Status == GestorRHPro.Models.WorkItemStatus.Done)</strong></div>
+</div>
+<div class="surface-card module-table-card">
+    @if (Model.Count == 0)
+    {
+        <div class="empty-state"><i class="bi bi-list-check"></i><span>Ainda não existem tarefas.</span><a asp-action="Create">Criar a primeira tarefa</a></div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle module-table mb-0">
+                <thead><tr><th>Tarefa</th><th>Responsável</th><th>Prazo</th><th>Prioridade</th><th>Estado</th><th>Ações</th></tr></thead>
+                <tbody>
+                @foreach (var task in Model)
+                {
+                    var overdue = task.Status != GestorRHPro.Models.WorkItemStatus.Done && task.DueDate.HasValue && task.DueDate.Value.Date < DateTime.Today;
+                    <tr>
+                        <td><strong>@task.Title</strong><small>@task.Description</small></td>
+                        <td>@(task.AssignedEmployee?.FullName ?? "Por atribuir")</td>
+                        <td class="@(overdue ? "text-danger fw-bold" : "")">@(task.DueDate?.ToString("dd/MM/yyyy") ?? "Sem prazo")</td>
+                        <td><span class="priority-pill priority-@task.Priority.ToString().ToLowerInvariant()">@(task.Priority == GestorRHPro.Models.TaskPriority.High ? "Alta" : task.Priority == GestorRHPro.Models.TaskPriority.Low ? "Baixa" : "Normal")</span></td>
+                        <td>
+                            <form asp-action="ChangeStatus" method="post" class="status-change-form">
+                                <input type="hidden" name="id" value="@task.Id" />
+                                <select name="status" class="form-select form-select-sm" aria-label="Estado de @task.Title">
+                                    <option value="ToDo" selected="@(task.Status == GestorRHPro.Models.WorkItemStatus.ToDo)">Por iniciar</option>
+                                    <option value="InProgress" selected="@(task.Status == GestorRHPro.Models.WorkItemStatus.InProgress)">Em curso</option>
+                                    <option value="Done" selected="@(task.Status == GestorRHPro.Models.WorkItemStatus.Done)">Concluída</option>
+                                </select>
+                                <button type="submit" class="icon-link" aria-label="Atualizar estado"><i class="bi bi-check2"></i></button>
+                            </form>
+                        </td>
+                        <td class="module-actions"><a asp-action="Edit" asp-route-id="@task.Id" class="icon-link" aria-label="Editar tarefa"><i class="bi bi-pencil"></i></a><form asp-action="Delete" asp-route-id="@task.Id" method="post" onsubmit="return confirm('Eliminar esta tarefa?')"><button class="icon-link danger-link" type="submit" aria-label="Eliminar tarefa"><i class="bi bi-trash"></i></button></form></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

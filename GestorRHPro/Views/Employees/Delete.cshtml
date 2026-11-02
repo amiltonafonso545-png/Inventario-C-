@@ -1,0 +1,19 @@
+@model GestorRHPro.Models.Employee
+@{ ViewData["Title"]="Eliminar Funcionário"; }
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-warning">@errorMessage</div>
+}
+<p>Eliminar @Model.FullName?</p>
+@if (ViewBag.HasPayrollHistory == true)
+{
+    <div class="alert alert-info">Este funcionário tem histórico salarial e não pode ser eliminado. Altere o estado para inativo para preservar os registos.</div>
+}
+<form asp-action="Delete" method="post">
+<input type="hidden" asp-for="Id"/>
+@if (ViewBag.HasPayrollHistory != true)
+{
+<button class="btn btn-danger">Eliminar</button>
+}
+<a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+</form>

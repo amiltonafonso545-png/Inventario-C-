@@ -1,0 +1,9 @@
+@model GestorRHPro.Models.LeaveRequest
+@{ ViewData["Title"]="Novo Pedido de Férias"; }
+<form asp-action="Create" method="post">
+<div class="mb-3"><label>Funcionário</label><select asp-for="EmployeeId" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(ViewBag.Employees,"Id","FullName"))" class="form-select"></select></div>
+<div class="mb-3"><label>Início</label><input asp-for="StartDate" type="date" class="form-control"/></div>
+<div class="mb-3"><label>Fim</label><input asp-for="EndDate" type="date" class="form-control"/></div>
+<div class="mb-3"><label>Motivo</label><input asp-for="Reason" class="form-control"/></div>
+<button class="btn btn-primary">Guardar</button>
+</form>
