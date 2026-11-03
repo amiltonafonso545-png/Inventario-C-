@@ -40,3 +40,6 @@ Consulte [GestorRHPro/README.md](GestorRHPro/README.md) para os passos completos
 ## Conta inicial e acesso
 
 Antes da primeira execução, configura o e-mail e a palavra-passe do administrador com User Secrets, conforme os passos em [GestorRHPro/README.md](GestorRHPro/README.md). Não existe uma palavra-passe padrão no código. O acesso às páginas exige início de sessão; a gestão está limitada às funções Administrador e RH.
+
+Configurei amiltonafonso545@gmail.com e a palavra-passe enviada nos User Secrets locais do projeto. As credenciais foram gravadas fora do repositório.
+
