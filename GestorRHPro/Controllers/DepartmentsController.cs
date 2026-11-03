@@ -15,7 +15,18 @@ public class DepartmentsController : Controller
     public async Task<IActionResult> Create(Department d){ if(!ModelState.IsValid) return View(d); _db.Departments.Add(d); await _db.SaveChangesAsync(); return RedirectToAction(nameof(Index)); }
     public async Task<IActionResult> Edit(int id){ var d=await _db.Departments.FindAsync(id); if(d==null) return NotFound(); return View(d); }
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, Department d){ if(id!=d.Id) return BadRequest(); if(!ModelState.IsValid) return View(d); _db.Update(d); await _db.SaveChangesAsync(); return RedirectToAction(nameof(Index)); }
+    public async Task<IActionResult> Edit(int id, Department d)
+    {
+        if (id != d.Id) return BadRequest();
+        if (!ModelState.IsValid) return View(d);
+
+        var department = await _db.Departments.FindAsync(id);
+        if (department is null) return NotFound();
+        department.Name = d.Name.Trim();
+        department.Description = d.Description?.Trim();
+        await _db.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
     public async Task<IActionResult> Delete(int id){ var d=await _db.Departments.FindAsync(id); if(d==null) return NotFound(); return View(d); }
     [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(int id){ var d=await _db.Departments.FindAsync(id); if(d!=null){_db.Departments.Remove(d); await _db.SaveChangesAsync();} return RedirectToAction(nameof(Index)); }

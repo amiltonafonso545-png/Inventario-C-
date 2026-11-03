@@ -1,0 +1,23 @@
+@model GestorRHPro.ViewModels.EmployeePayrollPageViewModel
+@using System.Globalization
+@{ ViewData["Title"] = "Salários"; var pt = CultureInfo.GetCultureInfo("pt-PT"); }
+
+<div class="page-heading mb-4"><div><p class="text-muted mb-1">Área pessoal</p><h1 class="h3 mb-0">Os meus salários</h1></div></div>
+@if (!Model.HasEmployeeRecord)
+{
+    <div class="alert alert-info">A sua conta ainda não está associada a um funcionário. Contacte os Recursos Humanos.</div>
+}
+else
+{
+    <section class="surface-card">
+        <div class="card-heading mb-3"><div><h2>Histórico salarial</h2><p>Últimos 24 registos publicados</p></div></div>
+        @if (Model.PayrollHistory.Count == 0) { <p class="text-muted mb-0">Ainda não existem registos salariais disponíveis.</p> }
+        else
+        {
+            <div class="table-responsive"><table class="table align-middle mb-0">
+                <thead><tr><th>Período</th><th>Salário base</th><th>Suplementos</th><th>Deduções</th><th>Líquido</th><th>Nota</th></tr></thead>
+                <tbody>@foreach (var item in Model.PayrollHistory) { <tr><td>@pt.DateTimeFormat.GetMonthName(item.Month) @item.Year</td><td>@item.BaseSalary.ToString("C", pt)</td><td>@item.Bonuses.ToString("C", pt)</td><td>@item.Deductions.ToString("C", pt)</td><td><strong>@item.NetSalary.ToString("C", pt)</strong></td><td>@(string.IsNullOrWhiteSpace(item.Note) ? "—" : item.Note)</td></tr> }</tbody>
+            </table></div>
+        }
+    </section>
+}

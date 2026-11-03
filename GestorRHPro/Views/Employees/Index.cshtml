@@ -1,6 +1,16 @@
 @model IEnumerable<GestorRHPro.Models.Employee>
 @{ ViewData["Title"]="Funcionários"; }
 <a asp-action="Create" class="btn btn-primary mb-3">Novo Funcionário</a>
+@if (TempData["EmployeeAccountError"] is string accountError)
+{
+    <div class="alert alert-warning" role="alert">@accountError</div>
+}
+@if (Model.Any(employee => string.IsNullOrWhiteSpace(employee.UserId)))
+{
+    <form asp-action="CreateAccounts" method="post" class="d-inline">
+        <button type="submit" class="btn btn-outline-primary mb-3">Criar contas em falta</button>
+    </form>
+}
 <table class="table table-striped">
 <thead><tr><th>Nome</th><th>Email</th><th>Departamento</th><th>Cargo</th><th>Estado</th><th></th></tr></thead>
 <tbody>

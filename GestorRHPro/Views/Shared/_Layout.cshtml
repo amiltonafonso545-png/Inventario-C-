@@ -22,9 +22,16 @@
         </a>
         <div class="sidebar-label">MENU PRINCIPAL</div>
         <nav class="sidebar-nav" aria-label="Navegação principal">
-            <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")" asp-controller="Home" asp-action="Index"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
-            @if (User.IsInRole("Administrator") || User.IsInRole("HRManager"))
+            @if (User.IsInRole("Employee"))
             {
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "EmployeePortal" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" asp-controller="EmployeePortal" asp-action="Index"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
+                <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Attendance" ? "active" : "")" asp-controller="EmployeePortal" asp-action="Attendance"><i class="bi bi-clock-history"></i><span>Assiduidade</span></a>
+                <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Leaves" ? "active" : "")" asp-controller="EmployeePortal" asp-action="Leaves"><i class="bi bi-calendar2-week"></i><span>Férias</span></a>
+                <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Payroll" ? "active" : "")" asp-controller="EmployeePortal" asp-action="Payroll"><i class="bi bi-cash-stack"></i><span>Salários</span></a>
+            }
+            else if (User.IsInRole("Administrator") || User.IsInRole("HRManager"))
+            {
+                <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")" asp-controller="Home" asp-action="Index"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
                 <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Attendance" ? "active" : "")" asp-controller="Attendance" asp-action="Index"><i class="bi bi-clock-history"></i><span>Assiduidade</span></a>
                 <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Employees" ? "active" : "")" asp-controller="Employees" asp-action="Index"><i class="bi bi-people"></i><span>Funcionários</span></a>
                 <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Departments" ? "active" : "")" asp-controller="Departments" asp-action="Index"><i class="bi bi-diagram-3"></i><span>Departamentos</span></a>
@@ -54,6 +61,7 @@
                         <span class="user-avatar">@((User.Identity?.Name ?? "U").Substring(0, 1).ToUpperInvariant())</span>
                         <span class="user-meta"><strong>@User.Identity?.Name</strong><small>@(User.IsInRole("Administrator") ? "Administrador" : User.IsInRole("HRManager") ? "Recursos Humanos" : "Funcionário")</small></span>
                     </div>
+                    <a asp-controller="Profile" asp-action="Index" class="icon-link" aria-label="O meu perfil" title="O meu perfil"><i class="bi bi-person-circle"></i></a>
                     <form asp-area="Identity" asp-page="/Account/Logout" method="post" class="logout-form">
                         <button class="logout-button" type="submit" aria-label="Terminar sessão" title="Terminar sessão"><i class="bi bi-box-arrow-right"></i></button>
                     </form>

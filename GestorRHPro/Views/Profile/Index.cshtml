@@ -1,0 +1,76 @@
+@model GestorRHPro.ViewModels.ProfileViewModel
+@{ ViewData["Title"] = "O meu perfil"; }
+
+<div class="page-heading mb-4">
+    <div>
+        <p class="text-muted mb-1">A sua conta</p>
+        <h1 class="h3 mb-0">O meu perfil</h1>
+    </div>
+</div>
+
+@if (TempData["ProfileSuccess"] is string successMessage)
+{
+    <div class="alert alert-success" role="status">@successMessage</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-3">Dados da conta</h2>
+                <form asp-action="Index" method="post">
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                    <div class="mb-3">
+                        <label asp-for="FullName" class="form-label"></label>
+                        <input asp-for="FullName" class="form-control" autocomplete="name" />
+                        <span asp-validation-for="FullName" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label"></label>
+                        <input asp-for="Email" class="form-control" autocomplete="email" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                        <div class="form-text">O email também é usado para iniciar sessão.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="PhoneNumber" class="form-label">Telefone</label>
+                        <input asp-for="PhoneNumber" class="form-control" autocomplete="tel" />
+                        <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Guardar perfil</button>
+                    <a asp-area="Identity" asp-page="/Account/Manage/ChangePassword" class="btn btn-outline-secondary ms-2">Alterar palavra-passe</a>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-3">Informação de acesso</h2>
+                <dl class="mb-0">
+                    <dt class="text-muted small">Função</dt>
+                    <dd>@Model.Role</dd>
+                    @if (Model.EmployeeNumber is not null)
+                    {
+                        <dt class="text-muted small">Número de funcionário</dt>
+                        <dd>@Model.EmployeeNumber</dd>
+                    }
+                    @if (Model.Department is not null)
+                    {
+                        <dt class="text-muted small">Departamento</dt>
+                        <dd>@Model.Department</dd>
+                    }
+                    @if (Model.Position is not null)
+                    {
+                        <dt class="text-muted small">Cargo</dt>
+                        <dd>@Model.Position</dd>
+                    }
+                    @if (Model.HireDate.HasValue)
+                    {
+                        <dt class="text-muted small">Data de admissão</dt>
+                        <dd>@Model.HireDate.Value.ToString("d", System.Globalization.CultureInfo.GetCultureInfo("pt-PT"))</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>

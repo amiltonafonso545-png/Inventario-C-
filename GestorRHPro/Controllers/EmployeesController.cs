@@ -3,12 +3,26 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using GestorRHPro.Data;
 using GestorRHPro.Models;
+using GestorRHPro.ViewModels;
+using Microsoft.AspNetCore.Identity;
+using System.Security.Cryptography;
 namespace GestorRHPro.Controllers;
 [Authorize(Roles = "Administrator,HRManager")]
 public class EmployeesController : Controller
 {
     private readonly ApplicationDbContext _db;
-    public EmployeesController(ApplicationDbContext db) => _db = db;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<IdentityRole> _roleManager;
+
+    public EmployeesController(
+        ApplicationDbContext db,
+        UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole> roleManager)
+    {
+        _db = db;
+        _userManager = userManager;
+        _roleManager = roleManager;
+    }
     public async Task<IActionResult> Index(string? search, int? dept, EmployeeStatus? status)
     {
         var q = _db.Employees.Include(e=>e.Department).Include(e=>e.Position).AsQueryable();
@@ -17,6 +31,112 @@ public class EmployeesController : Controller
         if (status.HasValue) q = q.Where(e=>e.Status==status);
         ViewBag.Departments = await _db.Departments.ToListAsync();
         return View(await q.ToListAsync());
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateAccounts()
+    {
+        Response.Headers.CacheControl = "no-store, no-cache";
+        Response.Headers.Pragma = "no-cache";
+        var result = new EmployeeAccountsResultViewModel();
+        var employees = await _db.Employees
+            .Where(employee => employee.UserId == null)
+            .OrderBy(employee => employee.FullName)
+            .ToListAsync();
+
+        if (!await _roleManager.RoleExistsAsync("Employee"))
+        {
+            var roleResult = await _roleManager.CreateAsync(new IdentityRole("Employee"));
+            if (!roleResult.Succeeded)
+            {
+                result.Skipped.Add("Não foi possível preparar a função de funcionário: "
+                    + string.Join(" ", roleResult.Errors.Select(error => error.Description)));
+                return View("AccountsCreated", result);
+            }
+        }
+
+        var duplicateEmails = employees
+            .Where(employee => !string.IsNullOrWhiteSpace(employee.Email))
+            .GroupBy(employee => employee.Email.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var employee in employees)
+        {
+            var email = employee.Email?.Trim();
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                result.Skipped.Add($"{employee.FullName}: falta um email.");
+                continue;
+            }
+            if (duplicateEmails.Contains(email))
+            {
+                result.Skipped.Add($"{employee.FullName}: o email {email} está repetido nos registos de funcionários.");
+                continue;
+            }
+            if (await _userManager.FindByEmailAsync(email) is not null)
+            {
+                result.Skipped.Add($"{employee.FullName}: já existe uma conta com o email {email}; não foi associada automaticamente.");
+                continue;
+            }
+
+            var password = GenerateInitialPassword();
+            var user = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                EmailConfirmed = false,
+                FullName = employee.FullName,
+                Role = "Employee"
+            };
+
+            await using var transaction = await _db.Database.BeginTransactionAsync();
+            var createResult = await _userManager.CreateAsync(user, password);
+            if (!createResult.Succeeded)
+            {
+                await transaction.RollbackAsync();
+                result.Skipped.Add($"{employee.FullName}: {string.Join(" ", createResult.Errors.Select(error => error.Description))}");
+                continue;
+            }
+
+            var addRoleResult = await _userManager.AddToRoleAsync(user, "Employee");
+            if (!addRoleResult.Succeeded)
+            {
+                await transaction.RollbackAsync();
+                result.Skipped.Add($"{employee.FullName}: não foi possível atribuir a função de funcionário.");
+                continue;
+            }
+
+            employee.UserId = user.Id;
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            result.Created.Add(new EmployeeAccountCredential(employee.FullName, email, password));
+        }
+
+        return View("AccountsCreated", result);
+    }
+
+    private static string GenerateInitialPassword()
+    {
+        const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        const string lower = "abcdefghijkmnopqrstuvwxyz";
+        const string digits = "23456789";
+        const string symbols = "!@#$%*?-_";
+        var all = upper + lower + digits + symbols;
+        var password = new char[24];
+        password[0] = upper[RandomNumberGenerator.GetInt32(upper.Length)];
+        password[1] = lower[RandomNumberGenerator.GetInt32(lower.Length)];
+        password[2] = digits[RandomNumberGenerator.GetInt32(digits.Length)];
+        password[3] = symbols[RandomNumberGenerator.GetInt32(symbols.Length)];
+        for (var index = 4; index < password.Length; index++)
+            password[index] = all[RandomNumberGenerator.GetInt32(all.Length)];
+        for (var index = password.Length - 1; index > 0; index--)
+        {
+            var swapIndex = RandomNumberGenerator.GetInt32(index + 1);
+            (password[index], password[swapIndex]) = (password[swapIndex], password[index]);
+        }
+        return new string(password);
     }
     public async Task<IActionResult> Create()
     {
@@ -44,7 +164,26 @@ public class EmployeesController : Controller
     {
         if (id!=e.Id) return BadRequest();
         if (!ModelState.IsValid) { ViewBag.Departments=await _db.Departments.ToListAsync(); ViewBag.Positions=await _db.Positions.ToListAsync(); return View(e); }
-        _db.Update(e); await _db.SaveChangesAsync();
+        if (e.DepartmentId.HasValue && !await _db.Departments.AnyAsync(department => department.Id == e.DepartmentId.Value))
+            ModelState.AddModelError(nameof(e.DepartmentId), "O departamento selecionado não existe.");
+        if (e.PositionId.HasValue && !await _db.Positions.AnyAsync(position => position.Id == e.PositionId.Value))
+            ModelState.AddModelError(nameof(e.PositionId), "O cargo selecionado não existe.");
+        if (!ModelState.IsValid)
+        {
+            ViewBag.Departments=await _db.Departments.ToListAsync();
+            ViewBag.Positions=await _db.Positions.ToListAsync();
+            return View(e);
+        }
+
+        var employee = await _db.Employees.FindAsync(id);
+        if (employee is null) return NotFound();
+        employee.FullName = e.FullName.Trim();
+        employee.Email = e.Email.Trim();
+        employee.Phone = e.Phone?.Trim();
+        employee.DepartmentId = e.DepartmentId;
+        employee.PositionId = e.PositionId;
+        employee.Status = e.Status;
+        await _db.SaveChangesAsync();
         return RedirectToAction(nameof(Index));
     }
     public async Task<IActionResult> Delete(int id)

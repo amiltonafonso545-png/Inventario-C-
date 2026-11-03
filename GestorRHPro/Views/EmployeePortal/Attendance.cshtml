@@ -1,0 +1,32 @@
+@model GestorRHPro.ViewModels.EmployeeAttendancePageViewModel
+@using GestorRHPro.Models
+@using System.Globalization
+@{ ViewData["Title"] = "Assiduidade"; var pt = CultureInfo.GetCultureInfo("pt-PT"); }
+
+<div class="page-heading mb-4"><div><p class="text-muted mb-1">Área pessoal</p><h1 class="h3 mb-0">A minha assiduidade</h1></div></div>
+@if (TempData["PortalMessage"] is string message) { <div class="alert alert-success" role="status">@message</div> }
+@if (TempData["PortalError"] is string error) { <div class="alert alert-warning" role="alert">@error</div> }
+@if (!Model.HasEmployeeRecord)
+{
+    <div class="alert alert-info">A sua conta ainda não está associada a um funcionário. Contacte os Recursos Humanos.</div>
+}
+else
+{
+    <section class="surface-card mb-4">
+        <div class="card-heading"><div><h2>Registo de hoje</h2><p>@DateTime.Today.ToString("d MMMM yyyy", pt)</p></div><span class="card-heading-icon"><i class="bi bi-clock-history"></i></span></div>
+        @if (Model.CanClockIn) { <form asp-action="ClockIn" method="post" class="mt-3"><button type="submit" class="btn btn-primary">Registar entrada</button></form> }
+        else if (Model.CanClockOut) { <form asp-action="ClockOut" method="post" class="mt-3"><button type="submit" class="btn btn-outline-primary">Registar saída</button></form> }
+        else { <p class="mb-0 mt-3">O registo de hoje já está concluído.</p> }
+    </section>
+    <section class="surface-card">
+        <div class="card-heading mb-3"><div><h2>Histórico</h2><p>Últimos 90 registos</p></div></div>
+        @if (Model.AttendanceHistory.Count == 0) { <p class="text-muted mb-0">Ainda não existem registos.</p> }
+        else
+        {
+            <div class="table-responsive"><table class="table align-middle mb-0">
+                <thead><tr><th>Data</th><th>Entrada</th><th>Saída</th><th>Estado</th></tr></thead>
+                <tbody>@foreach (var item in Model.AttendanceHistory) { <tr><td>@item.Date.ToString("d", pt)</td><td>@(item.CheckIn?.ToLocalTime().ToString("t", pt) ?? "—")</td><td>@(item.CheckOut?.ToLocalTime().ToString("t", pt) ?? "—")</td><td>@(item.Status switch { AttendanceStatus.Present => "Presente", AttendanceStatus.Absent => "Ausente", AttendanceStatus.Late => "Atraso", _ => "De férias" })</td></tr> }</tbody>
+            </table></div>
+        }
+    </section>
+}

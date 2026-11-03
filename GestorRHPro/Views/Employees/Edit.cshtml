@@ -2,6 +2,7 @@
 @{ ViewData["Title"]="Editar Funcionário"; }
 <form asp-action="Edit" method="post">
 <input type="hidden" asp-for="Id"/>
+<div asp-validation-summary="All" class="text-danger mb-3"></div>
 <div class="mb-3"><label>Nome</label><input asp-for="FullName" class="form-control"/></div>
 <div class="mb-3"><label>Email</label><input asp-for="Email" class="form-control"/></div>
 <div class="mb-3"><label>Telefone</label><input asp-for="Phone" class="form-control"/></div>
