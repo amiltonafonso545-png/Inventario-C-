@@ -1,0 +1,222 @@
+@model GestorRHPro.ViewModels.EmployeePortalViewModel
+@using GestorRHPro.Models
+@using System.Globalization
+@{
+    ViewData["Title"] = "Painel do funcionário";
+    var pt = CultureInfo.GetCultureInfo("pt-PT");
+    var latestSalary = Model.PayrollHistory.FirstOrDefault();
+}
+
+<div class="dashboard-heading mb-4">
+    <div>
+        <p class="eyebrow">@Model.Today.ToString("dddd, d 'de' MMMM 'de' yyyy", pt)</p>
+        <h1 class="h3 mb-0">Olá, @Model.EmployeeName</h1>
+        @if (!string.IsNullOrWhiteSpace(Model.InternalNumber))
+        {
+            <span class="text-muted">N.º funcionário: @Model.InternalNumber</span>
+        }
+    </div>
+    <a asp-controller="Profile" asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-person-circle me-2"></i>O meu perfil</a>
+</div>
+
+@if (TempData["PortalMessage"] is string message)
+{
+    <div class="alert alert-success" role="status">@message</div>
+}
+@if (TempData["PortalError"] is string error)
+{
+    <div class="alert alert-warning" role="alert">@error</div>
+}
+
+@if (!Model.HasEmployeeRecord)
+{
+    <div class="alert alert-info" role="status">
+        A sua conta ainda não está associada a um registo de funcionário. Contacte o administrador ou os Recursos Humanos.
+    </div>
+}
+else
+{
+    <div class="dashboard-page">
+    <section class="dashboard-main">
+    <div class="stats-grid">
+        <article class="stat-card">
+            <div class="stat-icon icon-violet"><i class="bi bi-calendar2-week"></i></div>
+            <div class="stat-label">Férias pendentes</div>
+            <div class="stat-value">@Model.PendingLeaveCount</div>
+            <div class="stat-foot"><span class="stat-note">Pedidos a aguardar aprovação</span></div>
+        </article>
+        <article class="stat-card">
+            <div class="stat-icon icon-teal"><i class="bi bi-clock-history"></i></div>
+            <div class="stat-label">Registos de assiduidade</div>
+            <div class="stat-value">@Model.AttendanceHistory.Count</div>
+            <div class="stat-foot"><span class="stat-note">Últimos 31 dias registados</span></div>
+        </article>
+        <article class="stat-card">
+            <div class="stat-icon icon-blue"><i class="bi bi-receipt"></i></div>
+            <div class="stat-label">Salários disponíveis</div>
+            <div class="stat-value">@Model.PayrollHistory.Count</div>
+            <div class="stat-foot"><span class="stat-note">Últimos registos publicados</span></div>
+        </article>
+        <article class="stat-card">
+            <div class="stat-icon icon-amber"><i class="bi bi-cash-stack"></i></div>
+            <div class="stat-label">Último valor líquido</div>
+            <div class="stat-value stat-currency">@(latestSalary is null ? "—" : latestSalary.NetSalary.ToString("C0", pt))</div>
+            <div class="stat-foot"><span class="stat-note">@(latestSalary is null ? "Sem registos salariais" : $"{pt.DateTimeFormat.GetMonthName(latestSalary.Month)} {latestSalary.Year}")</span></div>
+        </article>
+    </div>
+
+    <div class="employee-dashboard-grid">
+        <div class="col-xl-6">
+            <section id="attendance" class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h2 class="h5">Assiduidade de hoje</h2>
+                    <p class="text-muted">Registe a sua entrada e saída.</p>
+                    @if (Model.CanClockIn)
+                    {
+                        <form asp-action="ClockIn" method="post">
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-box-arrow-in-right me-2"></i>Registar entrada</button>
+                        </form>
+                    }
+                    else if (Model.CanClockOut)
+                    {
+                        <form asp-action="ClockOut" method="post">
+                            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-box-arrow-right me-2"></i>Registar saída</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <p class="mb-0">A assiduidade de hoje já foi registada.</p>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <div class="col-xl-6">
+            <section id="leave-requests" class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h2 class="h5">Pedir férias</h2>
+                    <form asp-action="RequestLeave" method="post">
+                        <div class="mb-3">
+                            <label for="StartDate" class="form-label">Data de início</label>
+                            <input type="date" id="StartDate" name="StartDate" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="EndDate" class="form-label">Data de fim</label>
+                            <input type="date" id="EndDate" name="EndDate" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="Reason" class="form-label">Motivo (opcional)</label>
+                            <textarea id="Reason" name="Reason" class="form-control" rows="2" maxlength="500"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Enviar pedido</button>
+                    </form>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12">
+            <section id="leave-history" class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="h5">Os meus pedidos de férias</h2>
+                    @if (Model.Leaves.Count == 0)
+                    {
+                        <p class="text-muted mb-0">Ainda não tem pedidos de férias.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive"><table class="table align-middle mb-0">
+                            <thead><tr><th>Início</th><th>Fim</th><th>Dias</th><th>Motivo</th><th>Estado</th></tr></thead>
+                            <tbody>
+                            @foreach (var leave in Model.Leaves)
+                            {
+                                <tr>
+                                    <td>@leave.StartDate.ToString("d", pt)</td>
+                                    <td>@leave.EndDate.ToString("d", pt)</td>
+                                    <td>@leave.Days</td>
+                                    <td>@(string.IsNullOrWhiteSpace(leave.Reason) ? "—" : leave.Reason)</td>
+                                    <td>@(leave.Status switch { LeaveStatus.Pending => "Pendente", LeaveStatus.Approved => "Aprovado", _ => "Rejeitado" })</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table></div>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <div class="col-xl-6">
+            <section id="attendance-history" class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h2 class="h5">O meu histórico de assiduidade</h2>
+                    @if (Model.AttendanceHistory.Count == 0)
+                    {
+                        <p class="text-muted mb-0">Ainda não existem registos.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                            <thead><tr><th>Data</th><th>Entrada</th><th>Saída</th><th>Estado</th></tr></thead>
+                            <tbody>
+                            @foreach (var item in Model.AttendanceHistory)
+                            {
+                                <tr>
+                                    <td>@item.Date.ToString("d", pt)</td>
+                                    <td>@(item.CheckIn?.ToLocalTime().ToString("t", pt) ?? "—")</td>
+                                    <td>@(item.CheckOut?.ToLocalTime().ToString("t", pt) ?? "—")</td>
+                                    <td>@(item.Status switch { AttendanceStatus.Present => "Presente", AttendanceStatus.Absent => "Ausente", AttendanceStatus.Late => "Atraso", _ => "De férias" })</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table></div>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <div class="col-xl-6">
+            <section id="payroll" class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h2 class="h5">Os meus salários</h2>
+                    @if (Model.PayrollHistory.Count == 0)
+                    {
+                        <p class="text-muted mb-0">Ainda não existem registos salariais disponíveis.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                            <thead><tr><th>Período</th><th>Base</th><th>Suplementos</th><th>Deduções</th><th>Líquido</th></tr></thead>
+                            <tbody>
+                            @foreach (var item in Model.PayrollHistory)
+                            {
+                                <tr>
+                                    <td>@pt.DateTimeFormat.GetMonthName(item.Month) @item.Year</td>
+                                    <td>@item.BaseSalary.ToString("C", pt)</td>
+                                    <td>@item.Bonuses.ToString("C", pt)</td>
+                                    <td>@item.Deductions.ToString("C", pt)</td>
+                                    <td><strong>@item.NetSalary.ToString("C", pt)</strong></td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table></div>
+                    }
+                </div>
+            </section>
+        </div>
+    </div>
+    </section>
+    <aside class="dashboard-rail">
+        <section class="surface-card quick-card">
+            <div class="rail-heading"><div><h2>Acesso rápido</h2><p>As suas áreas</p></div><i class="bi bi-lightning-charge"></i></div>
+            <a href="#attendance"><span><i class="bi bi-clock-history"></i>Registar assiduidade</span><i class="bi bi-chevron-right"></i></a>
+            <a href="#leave-requests"><span><i class="bi bi-calendar2-plus"></i>Pedir férias</span><i class="bi bi-chevron-right"></i></a>
+            <a href="#leave-history"><span><i class="bi bi-calendar2-week"></i>Estado dos pedidos</span><i class="bi bi-chevron-right"></i></a>
+            <a href="#payroll"><span><i class="bi bi-cash-stack"></i>Consultar salários</span><i class="bi bi-chevron-right"></i></a>
+            <a asp-controller="Profile" asp-action="Index"><span><i class="bi bi-person-circle"></i>O meu perfil</span><i class="bi bi-chevron-right"></i></a>
+        </section>
+        <section class="surface-card">
+            <div class="rail-heading"><div><h2>Área pessoal</h2><p>Dados visíveis apenas para si</p></div><i class="bi bi-shield-check"></i></div>
+            <p class="text-muted small mt-3 mb-0">O painel mostra os seus registos de férias, assiduidade e salários.</p>
+        </section>
+    </aside>
+    </div>
+}

@@ -17,7 +17,26 @@ public class PositionsController : Controller
     public async Task<IActionResult> Create(Position p){ if(!ModelState.IsValid){ViewBag.Departments=await _db.Departments.ToListAsync();return View(p);} _db.Positions.Add(p); await _db.SaveChangesAsync(); return RedirectToAction(nameof(Index)); }
     public async Task<IActionResult> Edit(int id){ var p=await _db.Positions.FindAsync(id); if(p==null) return NotFound(); ViewBag.Departments=await _db.Departments.ToListAsync(); return View(p); }
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, Position p){ if(id!=p.Id) return BadRequest(); if(!ModelState.IsValid){ViewBag.Departments=await _db.Departments.ToListAsync();return View(p);} _db.Update(p); await _db.SaveChangesAsync(); return RedirectToAction(nameof(Index)); }
+    public async Task<IActionResult> Edit(int id, Position p)
+    {
+        if (id != p.Id) return BadRequest();
+        if (p.DepartmentId.HasValue && !await _db.Departments.AnyAsync(department => department.Id == p.DepartmentId.Value))
+            ModelState.AddModelError(nameof(p.DepartmentId), "Selecione um departamento válido.");
+
+        if (!ModelState.IsValid)
+        {
+            ViewBag.Departments = await _db.Departments.OrderBy(department => department.Name).ToListAsync();
+            return View(p);
+        }
+
+        var position = await _db.Positions.FindAsync(id);
+        if (position is null) return NotFound();
+        position.Name = p.Name.Trim();
+        position.Description = p.Description?.Trim();
+        position.DepartmentId = p.DepartmentId;
+        await _db.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
     public async Task<IActionResult> Delete(int id){ var p=await _db.Positions.FindAsync(id); if(p==null) return NotFound(); return View(p); }
     [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(int id){ var p=await _db.Positions.FindAsync(id); if(p!=null){_db.Positions.Remove(p); await _db.SaveChangesAsync();} return RedirectToAction(nameof(Index)); }
@@ -39,9 +58,42 @@ public class LeaveRequestsController : Controller
     private readonly ApplicationDbContext _db;
     public LeaveRequestsController(ApplicationDbContext db) => _db = db;
     public async Task<IActionResult> Index() => View(await _db.LeaveRequests.Include(l=>l.Employee).OrderByDescending(l=>l.RequestedAt).ToListAsync());
-    public async Task<IActionResult> Create(){ ViewBag.Employees=await _db.Employees.ToListAsync(); return View(); }
+    public async Task<IActionResult> Create(){ await LoadEmployeesAsync(); return View(); }
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(LeaveRequest l){ if(!ModelState.IsValid){ViewBag.Employees=await _db.Employees.ToListAsync();return View(l);} l.Days=(l.EndDate-l.StartDate).Days+1; _db.LeaveRequests.Add(l); await _db.SaveChangesAsync(); return RedirectToAction(nameof(Index)); }
+    public async Task<IActionResult> Create(int? employeeId, DateTime? startDate, DateTime? endDate, string? reason)
+    {
+        var l = new LeaveRequest
+        {
+            EmployeeId = employeeId ?? 0,
+            StartDate = startDate ?? default,
+            EndDate = endDate ?? default,
+            Reason = reason
+        };
+
+        if (!employeeId.HasValue || !await _db.Employees.AnyAsync(employee => employee.Id == employeeId.Value))
+            ModelState.AddModelError("EmployeeId", "Selecione um funcionário válido.");
+        if (!startDate.HasValue)
+            ModelState.AddModelError("StartDate", "Indique a data de início.");
+        if (!endDate.HasValue)
+            ModelState.AddModelError("EndDate", "Indique a data de fim.");
+        if (startDate.HasValue && endDate.HasValue && endDate.Value.Date < startDate.Value.Date)
+            ModelState.AddModelError("EndDate", "A data de fim deve ser igual ou posterior à data de início.");
+
+        if (!ModelState.IsValid)
+        {
+            await LoadEmployeesAsync();
+            return View(l);
+        }
+
+        l.Days = (l.EndDate.Date - l.StartDate.Date).Days + 1;
+        l.Status = LeaveStatus.Pending;
+        l.RequestedAt = DateTime.UtcNow;
+        _db.LeaveRequests.Add(l);
+        await _db.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+
+    private async Task LoadEmployeesAsync() => ViewBag.Employees = await _db.Employees.OrderBy(employee => employee.FullName).ToListAsync();
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(int id){ var l=await _db.LeaveRequests.FindAsync(id); if(l!=null){l.Status=LeaveStatus.Approved; await _db.SaveChangesAsync();} return RedirectToAction(nameof(Index)); }
     [HttpPost, ValidateAntiForgeryToken]
@@ -81,13 +133,18 @@ public class ReportsController : Controller
         return View();
     }
 }
-[Authorize(Roles = "Administrator,HRManager")]
+[Authorize]
 public class HomeController : Controller
 {
     private readonly ApplicationDbContext _db;
     public HomeController(ApplicationDbContext db) => _db = db;
     public async Task<IActionResult> Index()
     {
+        if (User.IsInRole("Employee"))
+            return RedirectToAction("Index", "EmployeePortal");
+        if (!User.IsInRole("Administrator") && !User.IsInRole("HRManager"))
+            return Forbid();
+
         var today = DateTime.Today;
         var tomorrow = today.AddDays(1);
         var monthStart = new DateTime(today.Year, today.Month, 1);

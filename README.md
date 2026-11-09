@@ -40,3 +40,18 @@ Consulte [GestorRHPro/README.md](GestorRHPro/README.md) para os passos completos
 ## Conta inicial e acesso
 
 Antes da primeira execução, configura o e-mail e a palavra-passe do administrador com User Secrets, conforme os passos em [GestorRHPro/README.md](GestorRHPro/README.md). Não existe uma palavra-passe padrão no código. O acesso às páginas exige início de sessão; a gestão está limitada às funções Administrador e RH.
+
+Configurei amiltonafonso545@gmail.com e a palavra-passe enviada nos User Secrets locais do projeto. As credenciais foram gravadas fora do repositório.
+ 
+ corrige o erro da parte de ferias quer não guarda 
+
+o funcionário já pode iniciar sessão e consultar ou atualizar o próprio perfil. Ainda não há um painel de funcionário propriamente dito: ao entrar, ele vai diretamente para o perfil.
+
+Faltam principalmente estas funções:
+- Férias: pedir férias e acompanhar o estado dos próprios pedidos.
+- Assiduidade: consultar os próprios registos e, se essa for a regra da empresa, marcar entrada e saída.
+- Salários: consultar os próprios recibos e valores, sem acesso aos dados dos colegas.
+- Documentos: consultar ou descarregar apenas os documentos associados ao próprio funcionário.
+- Tarefas: ver tarefas atribuídas e atualizar o seu estado.
+- Notificações: receber avisos sobre férias, tarefas e outros pedidos.
+As áreas de férias, assiduidade, salários, documentos e tarefas existem para Administração/RH, mas ainda não têm a versão restrita ao funcionário. Eu começaria por férias, assiduidade e salários, com permissões que garantam que cada pessoa só vê os próprios dados.

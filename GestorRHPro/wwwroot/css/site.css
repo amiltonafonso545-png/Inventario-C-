@@ -98,6 +98,9 @@ a { color: var(--brand); }
 .trend-neutral, .trend-up { display: inline-grid; width: 25px; height: 25px; flex: 0 0 auto; place-items: center; border-radius: 8px; background: #f2f3ff; color: #6671d0; }
 .trend-up { color: #239b80; background: #e6f7f1; }
 .dashboard-content-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(230px, .9fr); gap: 13px; }
+.employee-dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.employee-dashboard-grid > .col-xl-6 { width: auto; }
+.employee-dashboard-grid > .col-12 { width: auto; grid-column: 1 / -1; }
 .surface-card { min-width: 0; padding: 16px; }
 .card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .card-heading h2, .rail-heading h2 { margin: 0; color: var(--ink); font: 700 13px 'Segoe UI', sans-serif; }
@@ -315,7 +318,7 @@ html[data-bs-theme="dark"] .calendar-day.is-today { color: #fff; }
   .stats-grid { gap: 8px; }
   .stat-card { padding: 11px; }
   .stat-label { font-size: 9px; }
-  .dashboard-content-grid, .dashboard-rail { grid-template-columns: minmax(0, 1fr); }
+  .dashboard-content-grid, .dashboard-rail, .employee-dashboard-grid { grid-template-columns: minmax(0, 1fr); }
   .payroll-card, .task-overview-card, .attendance-card, .department-card, .recent-card, .quick-card { grid-column: 1; }
   .chart-wrap { height: 185px; }
   .recent-heading { align-items: flex-start; flex-direction: column; }

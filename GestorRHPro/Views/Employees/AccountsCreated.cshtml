@@ -1,0 +1,51 @@
+@model GestorRHPro.ViewModels.EmployeeAccountsResultViewModel
+@{ ViewData["Title"] = "Contas de funcionários"; }
+
+<div class="d-flex align-items-start justify-content-between gap-3 mb-4">
+    <div>
+        <p class="text-muted mb-1">Acessos individuais</p>
+        <h1 class="h3 mb-0">Contas de funcionários</h1>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">Voltar aos funcionários</a>
+</div>
+
+@if (Model.Created.Count > 0)
+{
+    <div class="alert alert-warning" role="alert">
+        Guarde e entregue estas palavras-passe iniciais por um canal seguro. Elas são mostradas apenas nesta resposta e não são enviadas por email.
+    </div>
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead><tr><th>Funcionário</th><th>Email para iniciar sessão</th><th>Palavra-passe inicial</th></tr></thead>
+            <tbody>
+            @foreach (var account in Model.Created)
+            {
+                <tr>
+                    <td>@account.EmployeeName</td>
+                    <td>@account.Email</td>
+                    <td><code>@account.InitialPassword</code></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+else if (Model.Skipped.Count == 0)
+{
+    <div class="alert alert-info" role="status">Todos os funcionários já têm conta associada.</div>
+}
+
+@if (Model.Skipped.Count > 0)
+{
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body">
+            <h2 class="h5">Não foi possível criar algumas contas</h2>
+            <ul class="mb-0">
+            @foreach (var message in Model.Skipped)
+            {
+                <li>@message</li>
+            }
+            </ul>
+        </div>
+    </div>
+}
