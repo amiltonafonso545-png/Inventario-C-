@@ -21,8 +21,14 @@ public sealed class ProfileViewModel
     public string? PhoneNumber { get; set; }
 
     public string Role { get; set; } = "Utilizador";
+    public bool HasPhoto { get; set; }
+    public string? PhotoUrl { get; set; }
+    public bool EmailConfirmed { get; set; }
+    public bool TwoFactorEnabled { get; set; }
     public string? EmployeeNumber { get; set; }
     public string? Department { get; set; }
     public string? Position { get; set; }
     public DateTime? HireDate { get; set; }
+    public DateTime? BirthDate { get; set; }
+    public string? Address { get; set; }
 }

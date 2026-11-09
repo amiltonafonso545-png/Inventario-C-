@@ -1,5 +1,6 @@
 using GestorRHPro.Data;
 using GestorRHPro.Models;
+using GestorRHPro.Services;
 using GestorRHPro.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,17 +14,21 @@ public sealed class EmployeePortalController : Controller
 {
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly EmployeeDocumentStorage _documentStorage;
 
-    public EmployeePortalController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+    public EmployeePortalController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, EmployeeDocumentStorage documentStorage)
     {
         _db = db;
         _userManager = userManager;
+        _documentStorage = documentStorage;
     }
 
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        var employee = await GetCurrentEmployeeAsync();
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Challenge();
+        var employee = await _db.Employees.FirstOrDefaultAsync(item => item.UserId == user.Id);
         if (employee is null)
         {
             ViewData["Title"] = "Painel do funcionário";
@@ -54,6 +59,27 @@ public sealed class EmployeePortalController : Controller
                 item.Year, item.Month, item.BaseSalary, item.Bonuses, item.Deductions,
                 item.BaseSalary + item.Bonuses - item.Deductions, item.Note))
             .ToListAsync();
+        var documents = await _db.EmployeeDocuments
+            .Where(item => item.EmployeeId == employee.Id)
+            .OrderByDescending(item => item.UploadedAt)
+            .Take(5)
+            .Select(item => new EmployeeDocumentRow(item.Id, item.FileName, item.Category, item.UploadedAt, item.ExpiryDate))
+            .ToListAsync();
+        var notifications = await _db.Notifications
+            .Where(item => item.UserId == user.Id)
+            .OrderByDescending(item => item.CreatedAt)
+            .Take(5)
+            .Select(item => new EmployeeNotificationRow(item.Id, item.Title, item.Message, item.CreatedAt, item.IsRead))
+            .ToListAsync();
+        var tasks = await _db.TaskItems
+            .Where(item => item.AssignedEmployeeId == employee.Id)
+            .OrderBy(item => item.Status == WorkItemStatus.Done)
+            .ThenBy(item => item.DueDate == null)
+            .ThenBy(item => item.DueDate)
+            .ThenByDescending(item => item.CreatedAt)
+            .Take(5)
+            .Select(item => new EmployeeTaskRow(item.Id, item.Title, item.Description, item.DueDate, item.Priority, item.Status))
+            .ToListAsync();
 
         ViewData["Title"] = "Painel do funcionário";
         return View("Dashboard", new EmployeePortalViewModel
@@ -63,11 +89,15 @@ public sealed class EmployeePortalController : Controller
             InternalNumber = employee.InternalNumber,
             Today = DateTime.Today,
             PendingLeaveCount = leaves.Count(item => item.Status == LeaveStatus.Pending),
+            UnreadNotificationCount = await _db.Notifications.CountAsync(item => item.UserId == user.Id && !item.IsRead),
             CanClockIn = todayAttendance is null,
             CanClockOut = todayAttendance is { CheckIn: not null, CheckOut: null },
             Leaves = leaves,
             AttendanceHistory = attendance,
-            PayrollHistory = payroll
+            PayrollHistory = payroll,
+            Documents = documents,
+            Notifications = notifications,
+            Tasks = tasks
         });
     }
 
@@ -129,6 +159,66 @@ public sealed class EmployeePortalController : Controller
                 item.BaseSalary + item.Bonuses - item.Deductions, item.Note))
             .ToListAsync();
         return View(new EmployeePayrollPageViewModel { HasEmployeeRecord = true, PayrollHistory = payroll });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Documents()
+    {
+        var employee = await GetCurrentEmployeeAsync();
+        if (employee is null) return View(new EmployeeDocumentsPageViewModel());
+
+        var documents = await _db.EmployeeDocuments
+            .Where(item => item.EmployeeId == employee.Id)
+            .OrderByDescending(item => item.UploadedAt)
+            .Select(item => new EmployeeDocumentRow(item.Id, item.FileName, item.Category, item.UploadedAt, item.ExpiryDate))
+            .ToListAsync();
+        return View(new EmployeeDocumentsPageViewModel { HasEmployeeRecord = true, Documents = documents });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Tasks()
+    {
+        var employee = await GetCurrentEmployeeAsync();
+        if (employee is null) return View(new EmployeeTasksPageViewModel());
+
+        var tasks = await _db.TaskItems
+            .Where(item => item.AssignedEmployeeId == employee.Id)
+            .OrderBy(item => item.Status == WorkItemStatus.Done)
+            .ThenBy(item => item.DueDate == null)
+            .ThenBy(item => item.DueDate)
+            .ThenByDescending(item => item.CreatedAt)
+            .Select(item => new EmployeeTaskRow(item.Id, item.Title, item.Description, item.DueDate, item.Priority, item.Status))
+            .ToListAsync();
+        return View(new EmployeeTasksPageViewModel { HasEmployeeRecord = true, Tasks = tasks });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DownloadDocument(int id)
+    {
+        var employee = await GetCurrentEmployeeAsync();
+        if (employee is null) return Forbid();
+
+        var document = await _db.EmployeeDocuments.FirstOrDefaultAsync(item => item.Id == id && item.EmployeeId == employee.Id);
+        if (document is null) return NotFound();
+
+        var path = _documentStorage.ResolvePath(document.FilePath);
+        if (path is null) return NotFound();
+        return PhysicalFile(path, "application/octet-stream", Path.GetFileName(document.FileName));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkNotificationRead(int id)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Challenge();
+
+        var notification = await _db.Notifications.FirstOrDefaultAsync(item => item.Id == id && item.UserId == user.Id);
+        if (notification is not null && !notification.IsRead)
+        {
+            notification.IsRead = true;
+            await _db.SaveChangesAsync();
+        }
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost, ValidateAntiForgeryToken]

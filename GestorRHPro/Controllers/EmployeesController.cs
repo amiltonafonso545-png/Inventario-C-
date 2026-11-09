@@ -33,90 +33,74 @@ public class EmployeesController : Controller
         return View(await q.ToListAsync());
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateAccounts()
+    [HttpPost, ValidateAntiForgeryToken, Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> CreateAccount(int id)
     {
         Response.Headers.CacheControl = "no-store, no-cache";
         Response.Headers.Pragma = "no-cache";
         var result = new EmployeeAccountsResultViewModel();
-        var employees = await _db.Employees
-            .Where(employee => employee.UserId == null)
-            .OrderBy(employee => employee.FullName)
-            .ToListAsync();
+        var employee = await _db.Employees.FindAsync(id);
+        if (employee is null) return NotFound();
 
-        if (!await _roleManager.RoleExistsAsync("Employee"))
+        var email = employee.Email?.Trim();
+        if (!string.IsNullOrWhiteSpace(employee.UserId))
+            result.Skipped.Add($"{employee.FullName}: já tem acesso associado.");
+        else if (string.IsNullOrWhiteSpace(email))
+            result.Skipped.Add($"{employee.FullName}: falta um email.");
+        else if (await _db.Employees.AnyAsync(other => other.Id != employee.Id && other.Email == email))
+            result.Skipped.Add($"{employee.FullName}: o email está repetido noutro registo de funcionário.");
+        else if (await _userManager.FindByEmailAsync(email) is not null)
+            result.Skipped.Add($"{employee.FullName}: já existe uma conta com este email; não foi associada automaticamente.");
+        else
         {
-            var roleResult = await _roleManager.CreateAsync(new IdentityRole("Employee"));
-            if (!roleResult.Succeeded)
+            if (!await _roleManager.RoleExistsAsync("Employee"))
             {
-                result.Skipped.Add("Não foi possível preparar a função de funcionário: "
-                    + string.Join(" ", roleResult.Errors.Select(error => error.Description)));
-                return View("AccountsCreated", result);
-            }
-        }
-
-        var duplicateEmails = employees
-            .Where(employee => !string.IsNullOrWhiteSpace(employee.Email))
-            .GroupBy(employee => employee.Email.Trim(), StringComparer.OrdinalIgnoreCase)
-            .Where(group => group.Count() > 1)
-            .Select(group => group.Key)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var employee in employees)
-        {
-            var email = employee.Email?.Trim();
-            if (string.IsNullOrWhiteSpace(email))
-            {
-                result.Skipped.Add($"{employee.FullName}: falta um email.");
-                continue;
-            }
-            if (duplicateEmails.Contains(email))
-            {
-                result.Skipped.Add($"{employee.FullName}: o email {email} está repetido nos registos de funcionários.");
-                continue;
-            }
-            if (await _userManager.FindByEmailAsync(email) is not null)
-            {
-                result.Skipped.Add($"{employee.FullName}: já existe uma conta com o email {email}; não foi associada automaticamente.");
-                continue;
+                var roleResult = await _roleManager.CreateAsync(new IdentityRole("Employee"));
+                if (!roleResult.Succeeded)
+                    result.Skipped.Add("Não foi possível preparar a função de funcionário: "
+                        + string.Join(" ", roleResult.Errors.Select(error => error.Description)));
             }
 
-            var password = GenerateInitialPassword();
-            var user = new ApplicationUser
+            if (result.Skipped.Count == 0)
             {
-                UserName = email,
-                Email = email,
-                EmailConfirmed = false,
-                FullName = employee.FullName,
-                Role = "Employee"
-            };
+                var password = GenerateInitialPassword();
+                var user = new ApplicationUser
+                {
+                    UserName = email,
+                    Email = email,
+                    EmailConfirmed = false,
+                    FullName = employee.FullName,
+                    Role = "Employee"
+                };
 
-            await using var transaction = await _db.Database.BeginTransactionAsync();
-            var createResult = await _userManager.CreateAsync(user, password);
-            if (!createResult.Succeeded)
-            {
-                await transaction.RollbackAsync();
-                result.Skipped.Add($"{employee.FullName}: {string.Join(" ", createResult.Errors.Select(error => error.Description))}");
-                continue;
+                await using var transaction = await _db.Database.BeginTransactionAsync();
+                var createResult = await _userManager.CreateAsync(user, password);
+                if (!createResult.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    result.Skipped.Add($"{employee.FullName}: {string.Join(" ", createResult.Errors.Select(error => error.Description))}");
+                }
+                else
+                {
+                    var addRoleResult = await _userManager.AddToRoleAsync(user, "Employee");
+                    if (!addRoleResult.Succeeded)
+                    {
+                        await transaction.RollbackAsync();
+                        result.Skipped.Add($"{employee.FullName}: não foi possível atribuir a função de funcionário.");
+                    }
+                    else
+                    {
+                        employee.UserId = user.Id;
+                        await _db.SaveChangesAsync();
+                        await transaction.CommitAsync();
+                        result.Created.Add(new EmployeeAccountCredential(employee.FullName, email, password));
+                    }
+                }
             }
-
-            var addRoleResult = await _userManager.AddToRoleAsync(user, "Employee");
-            if (!addRoleResult.Succeeded)
-            {
-                await transaction.RollbackAsync();
-                result.Skipped.Add($"{employee.FullName}: não foi possível atribuir a função de funcionário.");
-                continue;
-            }
-
-            employee.UserId = user.Id;
-            await _db.SaveChangesAsync();
-            await transaction.CommitAsync();
-            result.Created.Add(new EmployeeAccountCredential(employee.FullName, email, password));
         }
 
         return View("AccountsCreated", result);
     }
-
     private static string GenerateInitialPassword()
     {
         const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";

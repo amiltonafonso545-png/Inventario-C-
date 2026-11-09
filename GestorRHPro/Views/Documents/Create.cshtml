@@ -1,8 +1,12 @@
 @{ ViewData["Title"]="Novo Documento"; }
+@if (TempData["DocumentNotice"] is string notice)
+{
+    <div class="alert alert-warning" role="alert">@notice</div>
+}
 <form asp-action="Create" method="post" enctype="multipart/form-data">
 <div class="mb-3"><label>Funcionário</label><select name="employeeId" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(ViewBag.Employees,"Id","FullName"))" class="form-select"></select></div>
 <div class="mb-3"><label>Categoria</label><input name="category" class="form-control"/></div>
 <div class="mb-3"><label>Validade</label><input name="expiryDate" type="date" class="form-control"/></div>
-<div class="mb-3"><label>Ficheiro</label><input type="file" name="file" class="form-control"/></div>
+<div class="mb-3"><label>Ficheiro</label><input type="file" name="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" class="form-control" required/><div class="form-text">PDF, Word, Excel ou imagem; máximo 15 MB.</div></div>
 <button class="btn btn-primary">Guardar</button>
 </form>

@@ -8,6 +8,10 @@
     <div><p class="eyebrow">ORGANIZAÇÃO DA EQUIPA</p><h1>Tarefas</h1><p class="text-secondary">Atribui tarefas, acompanha os prazos e atualiza o estado.</p></div>
     <a asp-action="Create" class="btn btn-brand"><i class="bi bi-plus-lg me-2"></i>Nova tarefa</a>
 </div>
+@if (TempData["TaskNotice"] is string taskNotice)
+{
+    <div class="alert alert-info" role="status">@taskNotice</div>
+}
 <div class="module-summary-row">
     <div class="module-summary"><span>Tarefas em aberto</span><strong>@openCount</strong></div>
     <div class="module-summary"><span>Atrasadas</span><strong>@overdueCount</strong></div>

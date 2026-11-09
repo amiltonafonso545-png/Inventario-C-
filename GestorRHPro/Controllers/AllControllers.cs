@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using GestorRHPro.Data;
 using GestorRHPro.Models;
+using GestorRHPro.Services;
 using GestorRHPro.ViewModels;
 using System.Globalization;
 namespace GestorRHPro.Controllers;
@@ -103,21 +104,92 @@ public class LeaveRequestsController : Controller
 public class DocumentsController : Controller
 {
     private readonly ApplicationDbContext _db;
-    private readonly IWebHostEnvironment _env;
-    public DocumentsController(ApplicationDbContext db, IWebHostEnvironment env){_db=db;_env=env;}
+    private readonly EmployeeDocumentStorage _storage;
+    public DocumentsController(ApplicationDbContext db, EmployeeDocumentStorage storage){_db=db;_storage=storage;}
     public async Task<IActionResult> Index() => View(await _db.EmployeeDocuments.Include(d=>d.Employee).ToListAsync());
-    public async Task<IActionResult> Create(){ ViewBag.Employees=await _db.Employees.ToListAsync(); return View(); }
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(int employeeId, string category, DateTime? expiryDate, IFormFile file)
+    public async Task<IActionResult> Download(int id)
     {
-        if(file==null) return RedirectToAction(nameof(Create));
-        var dir=Path.Combine(_env.WebRootPath,"uploads"); Directory.CreateDirectory(dir);
-        var name=Guid.NewGuid()+Path.GetExtension(file.FileName);
-        var path=Path.Combine(dir,name);
-        using(var s=new FileStream(path,FileMode.Create)){ await file.CopyToAsync(s);}
-        _db.EmployeeDocuments.Add(new EmployeeDocument{EmployeeId=employeeId,FileName=file.FileName,FilePath="/uploads/"+name,Category=category,ExpiryDate=expiryDate});
-        await _db.SaveChangesAsync();
+        var document = await _db.EmployeeDocuments.FindAsync(id);
+        if (document is null) return NotFound();
+        var path = _storage.ResolvePath(document.FilePath);
+        if (path is null) return NotFound();
+        return PhysicalFile(path, "application/octet-stream", Path.GetFileName(document.FileName));
+    }
+    public async Task<IActionResult> Create(){ ViewBag.Employees=await _db.Employees.ToListAsync(); return View(); }
+    [HttpPost, ValidateAntiForgeryToken, RequestSizeLimit(16_000_000)]
+    public async Task<IActionResult> Create(int employeeId, string? category, DateTime? expiryDate, IFormFile? file)
+    {
+        var employee = await _db.Employees.FirstOrDefaultAsync(item => item.Id == employeeId);
+        if (employee is null || file is null || file.Length == 0)
+        {
+            TempData["DocumentNotice"] = employee is null
+                ? "Selecione um funcionário válido."
+                : "Selecione um ficheiro para enviar.";
+            return RedirectToAction(nameof(Create));
+        }
+        const long maxFileSize = 15 * 1024 * 1024;
+        var extension = await GetSupportedExtensionAsync(file);
+        if (file.Length > maxFileSize || extension is null)
+        {
+            TempData["DocumentNotice"] = file.Length > maxFileSize
+                ? "O ficheiro ultrapassa o limite de 15 MB."
+                : "Formato não suportado ou conteúdo inválido. Use PDF, DOC, DOCX, XLS, XLSX, JPG ou PNG.";
+            return RedirectToAction(nameof(Create));
+        }
+
+        var storageKey = await _storage.SaveAsync(file, extension);
+        var displayName = Path.GetFileName(file.FileName);
+        var document = new EmployeeDocument
+        {
+            EmployeeId = employeeId,
+            FileName = displayName,
+            FilePath = storageKey,
+            Category = string.IsNullOrWhiteSpace(category) ? "Outros" : category.Trim(),
+            ExpiryDate = expiryDate,
+            UploadedAt = DateTime.UtcNow
+        };
+        _db.EmployeeDocuments.Add(document);
+        if (!string.IsNullOrWhiteSpace(employee.UserId))
+        {
+            _db.Notifications.Add(new Notification
+            {
+                UserId = employee.UserId,
+                Title = "Novo documento disponível",
+                Message = $"O documento {displayName} foi adicionado à sua área pessoal.",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch
+        {
+            _storage.Delete(storageKey);
+            throw;
+        }
+        TempData["DocumentNotice"] = string.IsNullOrWhiteSpace(employee.UserId)
+            ? "Documento guardado, mas o funcionário ainda não tem uma conta associada e não recebeu notificação."
+            : "Documento guardado e notificação enviada ao funcionário.";
         return RedirectToAction(nameof(Index));
+    }
+
+    private static async Task<string?> GetSupportedExtensionAsync(IFormFile file)
+    {
+        var extension = Path.GetExtension(Path.GetFileName(file.FileName)).ToLowerInvariant();
+        var header = new byte[8];
+        await using var stream = file.OpenReadStream();
+        var bytesRead = await stream.ReadAsync(header);
+        var isSupported = extension switch
+        {
+            ".pdf" => bytesRead >= 5 && header[0] == 0x25 && header[1] == 0x50 && header[2] == 0x44 && header[3] == 0x46 && header[4] == 0x2D,
+            ".jpg" or ".jpeg" => bytesRead >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF,
+            ".png" => bytesRead >= 8 && header.AsSpan(0, 8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }),
+            ".docx" or ".xlsx" => bytesRead >= 4 && header[0] == 0x50 && header[1] == 0x4B && header[2] == 0x03 && header[3] == 0x04,
+            ".doc" or ".xls" => bytesRead >= 8 && header.AsSpan(0, 8).SequenceEqual(new byte[] { 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1 }),
+            _ => false
+        };
+        return isSupported ? extension : null;
     }
 }
 [Authorize(Roles = "Administrator,HRManager")]

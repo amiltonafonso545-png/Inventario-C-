@@ -1,0 +1,36 @@
+@page
+@model GestorRHPro.Areas.Identity.Pages.Account.LogoutModel
+@{
+    Layout = "/Views/Shared/_AuthLayout.cshtml";
+    ViewData["Title"] = "Sessão terminada";
+}
+
+<main class="logout-page">
+    <section class="logout-card" aria-labelledby="logout-title">
+        <a class="auth-mobile-brand logout-brand" asp-controller="Home" asp-action="Index">
+            <span class="auth-brand-mark">G</span>
+            <span>GestorRH <strong>Pro</strong></span>
+        </a>
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <div class="logout-icon logout-icon-neutral" aria-hidden="true">↗</div>
+            <p class="auth-eyebrow">GESTORRH PRO</p>
+            <h1 id="logout-title">Terminar sessão?</h1>
+            <p class="logout-description">Vai sair da sua conta neste dispositivo.</p>
+            <form method="post" class="logout-actions">
+                <button type="submit" class="auth-submit">Terminar sessão</button>
+                <a asp-controller="Home" asp-action="Index" class="logout-secondary">Continuar na aplicação</a>
+            </form>
+        }
+        else
+        {
+            <div class="logout-icon" aria-hidden="true"><span>✓</span></div>
+            <p class="auth-eyebrow">SESSÃO ENCERRADA</p>
+            <h1 id="logout-title">Saiu da sua conta.</h1>
+            <p class="logout-description">A sua sessão foi terminada com segurança. Pode voltar a entrar quando quiser.</p>
+            <a asp-page="/Account/Login" class="auth-submit logout-signin">Iniciar sessão <span aria-hidden="true">→</span></a>
+        }
+        <div class="logout-footer"><span class="auth-status-dot"></span> Os dados da sua conta continuam protegidos</div>
+    </section>
+    <p class="auth-footer">GestorRH Pro <span>·</span> Gestão simples, equipa mais próxima.</p>
+</main>

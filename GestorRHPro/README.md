@@ -27,12 +27,13 @@ Fluxo principal: navegador → controlador MVC → serviço de negócio → `App
 - O `Program.cs` configura MVC, Razor Pages, Identity, autenticação e autorização.
 - Existem entidades para funcionários, departamentos, cargos, assiduidade, férias, documentos, salários mensais e tarefas, além de registos de auditoria e notificações no contexto de dados.
 - Existem vistas e controladores iniciais, mas a presença de ficheiros não significa que os respetivos módulos estejam completos ou seguros.
-- As migrações SQLite encontram-se em `Data/Migrations/` e o arranque tenta aplicá-las automaticamente.
-- `appsettings.json` aponta para o ficheiro local `gestorrhpro.db`. O Entity Framework Core cria a base de dados ao iniciar a aplicação e aplicar a migração.
-- As funções são criadas no arranque. A conta de administrador inicial só é criada quando as credenciais são configuradas localmente com User Secrets; não existe uma palavra-passe padrão no código.
+- As migrações SQLite encontram-se em `Data/Migrations/`. O arranque aplica-as automaticamente apenas em Development; em produção, gere e aplique um script revisto durante a publicação.
+- `appsettings.json` aponta para o ficheiro SQLite local `gestorrhpro.db`, adequado ao desenvolvimento. Em produção, use um caminho num volume persistente e mantenha uma única instância; várias instâncias exigem mudar para um fornecedor de base de dados partilhado.
+- As funções são criadas no arranque. Configure a conta inicial com User Secrets em desenvolvimento e com o gestor de segredos do alojamento em produção.
 - O Identity exige palavra-passe com pelo menos 12 caracteres, maiúscula, minúscula, número e símbolo. O bloqueio após tentativas falhadas está ativo.
-- Todas as páginas exigem autenticação por padrão. As áreas de gestão estão limitadas às funções `Administrator` e `HRManager`; as páginas de autoatendimento do funcionário ainda não estão implementadas.
-- Os ficheiros em `/uploads` só são servidos a utilizadores nas funções `Administrator` e `HRManager`.
+- Todas as páginas exigem autenticação por padrão. As áreas de gestão estão limitadas às funções `Administrator` e `HRManager`. Cada funcionário pode receber um acesso individual ao painel, criado pelo Administrador na lista de funcionários; a palavra-passe inicial é gerada uma vez e apresentada nessa resposta. O painel permite consultar assiduidade, férias e salários, e pedir férias.
+- Administradores, RH e funcionários podem carregar uma fotografia JPG, PNG ou WebP de até 5 MB na página **O meu perfil**. As imagens ficam em `App_Data/ProfilePhotos`, fora da pasta pública, e cada utilizador acede à sua própria fotografia após iniciar sessão.
+- Novos documentos são armazenados fora de `wwwroot` e transferidos por ações que verificam a propriedade. Documentos antigos em `/uploads` mantêm compatibilidade de leitura.
 - O módulo **Salários** regista salário base, suplementos e deduções por funcionário e mês; o valor líquido é calculado. A base impede registos duplicados para o mesmo funcionário e período.
 - O módulo **Tarefas** permite criar, atribuir, editar, concluir e eliminar tarefas, com prazo, prioridade e estado.
 - O dashboard não gera exemplos fictícios: começa sem valores de salários e tarefas. Registe funcionários primeiro; depois use **Salários → Novo salário** e **Tarefas → Nova tarefa** para preencher os cartões com dados da empresa.
@@ -82,9 +83,9 @@ O perfil de lançamento HTTPS usa `https://localhost:7064`; o perfil HTTP usa `h
 
 ## Base de dados SQLite
 
-O projeto usa SQLite e não requer servidor ou configuração de ligação. A ligação padrão em `appsettings.json` é `Data Source=gestorrhpro.db`. User Secrets são usados apenas para credenciais do administrador inicial.
+O projeto usa SQLite. A ligação padrão é `Data Source=gestorrhpro.db`; User Secrets são usados apenas em desenvolvimento para as credenciais do administrador inicial.
 
-O arranque aplica automaticamente a migração SQLite e cria o ficheiro da base de dados na pasta do projeto.
+Em Development, o arranque aplica automaticamente as migrações. Fora desse ambiente, gere um script e aplique-o antes de iniciar a nova versão.
 
 Para criar e aplicar futuras alterações ao modelo:
 
@@ -94,6 +95,24 @@ dotnet ef database update
 ```
 
 Reveja cada migração antes de a aplicar. A antiga migração SQL Server foi substituída por `InitialSqlite`, pois migrações de um fornecedor não são portáveis para outro.
+
+## Preparação para produção
+
+A aplicação exige configuração explícita fora de Development. Defina estes valores no gestor de configuração/segredos do alojamento, não em ficheiros commitados:
+
+- `AllowedHosts`: domínio real do site, sem `*`.
+- `ConnectionStrings__DefaultConnection`: caminho absoluto para o ficheiro SQLite num volume persistente. O valor padrão é apenas para desenvolvimento local; para várias instâncias, migre para um fornecedor de base de dados partilhado.
+- `DataProtection__KeysPath`: caminho absoluto para um diretório persistente e privado, partilhado por todas as instâncias da mesma aplicação. Proteja as chaves em repouso.
+- `Storage__EmployeeDocumentsPath` e `Storage__ProfilePhotosPath`: caminhos absolutos para diretórios persistentes, privados e fora de `wwwroot`.
+- `BootstrapAdmin__Email` e `BootstrapAdmin__Password`: credenciais iniciais guardadas como segredos do alojamento. Use uma palavra-passe nova para produção.
+
+Por padrão, as migrações não são executadas ao iniciar em produção. Gere, reveja e aplique o SQL durante a publicação:
+
+```powershell
+dotnet ef migrations script --idempotent -o deploy.sql
+```
+
+Publique a aplicação em modo Release com `dotnet publish -c Release`. Configure HTTPS e cabeçalhos encaminhados conforme o proxy/plataforma, cópias de segurança automáticas e um procedimento de recuperação. Não publique ficheiros locais em `wwwroot/uploads`, bases de dados SQLite, documentos de funcionários nem chaves de Data Protection. O endpoint `/health` verifica a ligação à base de dados.
 
 ## Próximas etapas de desenvolvimento
 

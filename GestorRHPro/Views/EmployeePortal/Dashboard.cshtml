@@ -97,6 +97,86 @@
                 </section>
             </div>
         }
+        @if (Model.HasEmployeeRecord)
+        {
+            <div class="employee-dashboard-grid mt-3">
+                <section id="notifications" class="surface-card">
+                    <div class="card-heading">
+                        <div><h2>Notificações</h2><p>@Model.UnreadNotificationCount por ler</p></div>
+                        <span class="card-heading-icon"><i class="bi bi-bell"></i></span>
+                    </div>
+                    @if (Model.Notifications.Count == 0)
+                    {
+                        <p class="text-muted mt-3 mb-0">Ainda não tem notificações.</p>
+                    }
+                    else
+                    {
+                        <div class="portal-notification-list">
+                            @foreach (var notification in Model.Notifications)
+                            {
+                                <div class="portal-notification @(notification.IsRead ? "is-read" : "is-unread")">
+                                    <div><strong>@notification.Title</strong><p>@notification.Message</p><small>@notification.CreatedAt.ToLocalTime().ToString("g", pt)</small></div>
+                                    @if (!notification.IsRead)
+                                    {
+                                        <form asp-action="MarkNotificationRead" asp-route-id="@notification.Id" method="post">
+                                            <button class="btn btn-sm btn-outline-primary" type="submit">Marcar lida</button>
+                                        </form>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </section>
+                <section class="surface-card">
+                    <div class="card-heading">
+                        <div><h2>Documentos</h2><p>Ficheiros partilhados consigo</p></div>
+                        <span class="card-heading-icon"><i class="bi bi-folder2-open"></i></span>
+                    </div>
+                    @if (Model.Documents.Count == 0)
+                    {
+                        <p class="text-muted mt-3 mb-0">Ainda não tem documentos partilhados.</p>
+                    }
+                    else
+                    {
+                        <ul class="portal-document-list">
+                            @foreach (var document in Model.Documents)
+                            {
+                                <li><a asp-action="DownloadDocument" asp-route-id="@document.Id"><i class="bi bi-file-earmark-arrow-down"></i><span><strong>@document.FileName</strong><small>@document.Category · @document.UploadedAt.ToLocalTime().ToString("d", pt)</small></span></a></li>
+                            }
+                        </ul>
+                    }
+                    <a asp-action="Documents" class="task-view-all">Ver todos os documentos <i class="bi bi-arrow-right"></i></a>
+                </section>
+                <section class="surface-card">
+                    <div class="card-heading">
+                        <div><h2>Tarefas atribuídas</h2><p>O que está sob a sua responsabilidade</p></div>
+                        <span class="card-heading-icon"><i class="bi bi-list-check"></i></span>
+                    </div>
+                    @if (Model.Tasks.Count == 0)
+                    {
+                        <p class="text-muted mt-3 mb-0">Não tem tarefas atribuídas.</p>
+                    }
+                    else
+                    {
+                        <ul class="portal-document-list">
+                            @foreach (var task in Model.Tasks)
+                            {
+                                <li>
+                                    <a asp-action="Tasks">
+                                        <i class="bi bi-check2-square"></i>
+                                        <span>
+                                            <strong>@task.Title</strong>
+                                            <small>@(task.Status switch { GestorRHPro.Models.WorkItemStatus.ToDo => "Por iniciar", GestorRHPro.Models.WorkItemStatus.InProgress => "Em curso", _ => "Concluída" }) · @(task.DueDate?.ToString("d", pt) ?? "Sem prazo")</small>
+                                        </span>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    <a asp-action="Tasks" class="task-view-all">Ver todas as tarefas <i class="bi bi-arrow-right"></i></a>
+                </section>
+            </div>
+        }
     </section>
     @if (Model.HasEmployeeRecord)
     {

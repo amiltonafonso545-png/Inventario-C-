@@ -1,7 +1,10 @@
 @using Microsoft.AspNetCore.Identity
 @using GestorRHPro.Models
 @inject SignInManager<ApplicationUser> SignInManager
-@inject UserManager<ApplicationUser> UserManager
+@{
+    var avatarName = User.Identity?.Name;
+    var avatarInitial = string.IsNullOrWhiteSpace(avatarName) ? "U" : avatarName[..1].ToUpperInvariant();
+}
 <!DOCTYPE html>
 <html lang="pt-PT" data-bs-theme="light">
 <head>
@@ -28,6 +31,8 @@
                 <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Attendance" ? "active" : "")" asp-controller="EmployeePortal" asp-action="Attendance"><i class="bi bi-clock-history"></i><span>Assiduidade</span></a>
                 <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Leaves" ? "active" : "")" asp-controller="EmployeePortal" asp-action="Leaves"><i class="bi bi-calendar2-week"></i><span>Férias</span></a>
                 <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Payroll" ? "active" : "")" asp-controller="EmployeePortal" asp-action="Payroll"><i class="bi bi-cash-stack"></i><span>Salários</span></a>
+                <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Tasks" ? "active" : "")" asp-controller="EmployeePortal" asp-action="Tasks"><i class="bi bi-list-check"></i><span>Tarefas</span></a>
+                <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Documents" ? "active" : "")" asp-controller="EmployeePortal" asp-action="Documents"><i class="bi bi-folder2-open"></i><span>Documentos</span></a>
             }
             else if (User.IsInRole("Administrator") || User.IsInRole("HRManager"))
             {
@@ -58,7 +63,7 @@
                 @if (SignInManager.IsSignedIn(User))
                 {
                     <div class="user-summary">
-                        <span class="user-avatar">@((User.Identity?.Name ?? "U").Substring(0, 1).ToUpperInvariant())</span>
+                        <img class="user-avatar user-avatar-image" src="@Url.Action("Photo", "Profile")" data-initial="@avatarInitial" alt="Fotografia de perfil" />
                         <span class="user-meta"><strong>@User.Identity?.Name</strong><small>@(User.IsInRole("Administrator") ? "Administrador" : User.IsInRole("HRManager") ? "Recursos Humanos" : "Funcionário")</small></span>
                     </div>
                     <a asp-controller="Profile" asp-action="Index" class="icon-link" aria-label="O meu perfil" title="O meu perfil"><i class="bi bi-person-circle"></i></a>
@@ -83,6 +88,17 @@
 (() => {
     const root = document.documentElement;
     const button = document.getElementById('themeToggle');
+    document.querySelectorAll('.user-avatar-image').forEach(image => {
+        const showFallback = () => {
+            if (!image.isConnected) return;
+            const fallback = document.createElement('span');
+            fallback.className = 'user-avatar';
+            fallback.textContent = image.dataset.initial || 'U';
+            image.replaceWith(fallback);
+        };
+        image.addEventListener('error', showFallback, { once: true });
+        if (image.complete && image.naturalWidth === 0) showFallback();
+    });
     const savedTheme = localStorage.getItem('gestorrh-theme');
     if (savedTheme === 'dark') root.setAttribute('data-bs-theme', 'dark');
     const updateButton = () => {

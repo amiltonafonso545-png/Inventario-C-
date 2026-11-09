@@ -1,76 +1,188 @@
 @model GestorRHPro.ViewModels.ProfileViewModel
-@{ ViewData["Title"] = "O meu perfil"; }
-
-<div class="page-heading mb-4">
-    <div>
-        <p class="text-muted mb-1">A sua conta</p>
-        <h1 class="h3 mb-0">O meu perfil</h1>
-    </div>
-</div>
-
-@if (TempData["ProfileSuccess"] is string successMessage)
-{
-    <div class="alert alert-success" role="status">@successMessage</div>
+@using System.Globalization
+@{
+    ViewData["Title"] = "O meu perfil";
+    var pt = CultureInfo.GetCultureInfo("pt-PT");
+    var initial = string.IsNullOrWhiteSpace(Model.FullName) ? "U" : Model.FullName.Trim()[0].ToString().ToUpperInvariant();
 }
 
-<div class="row g-4">
-    <div class="col-lg-7">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h2 class="h5 mb-3">Dados da conta</h2>
-                <form asp-action="Index" method="post">
-                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
-                    <div class="mb-3">
-                        <label asp-for="FullName" class="form-label"></label>
-                        <input asp-for="FullName" class="form-control" autocomplete="name" />
-                        <span asp-validation-for="FullName" class="text-danger"></span>
-                    </div>
-                    <div class="mb-3">
-                        <label asp-for="Email" class="form-label"></label>
-                        <input asp-for="Email" class="form-control" autocomplete="email" />
-                        <span asp-validation-for="Email" class="text-danger"></span>
-                        <div class="form-text">O email também é usado para iniciar sessão.</div>
-                    </div>
-                    <div class="mb-3">
-                        <label asp-for="PhoneNumber" class="form-label">Telefone</label>
-                        <input asp-for="PhoneNumber" class="form-control" autocomplete="tel" />
-                        <span asp-validation-for="PhoneNumber" class="text-danger"></span>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Guardar perfil</button>
-                    <a asp-area="Identity" asp-page="/Account/Manage/ChangePassword" class="btn btn-outline-secondary ms-2">Alterar palavra-passe</a>
+<div class="profile-dashboard">
+    <nav class="profile-breadcrumb" aria-label="Navegação estrutural">
+        <a asp-controller="Home" asp-action="Index" aria-label="Painel inicial"><i class="bi bi-house-door"></i></a>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>O meu perfil</span>
+    </nav>
+
+    <header class="profile-page-heading">
+        <div>
+            <p class="profile-eyebrow">A SUA CONTA</p>
+            <h1>O meu perfil</h1>
+            <p>Consulte e atualize as suas informações pessoais.</p>
+        </div>
+        <span class="profile-role-pill"><i class="bi bi-person-badge"></i>@Model.Role</span>
+    </header>
+
+    @if (TempData["ProfileSuccess"] is string successMessage)
+    {
+        <div class="alert alert-success" role="status">@successMessage</div>
+    }
+    @if (TempData["ProfileError"] is string errorMessage)
+    {
+        <div class="alert alert-danger" role="alert">@errorMessage</div>
+    }
+
+    <section class="profile-hero" aria-label="Resumo do perfil">
+        <div class="profile-hero-decoration" aria-hidden="true"></div>
+        <div class="profile-hero-person">
+            <div class="profile-photo-frame">
+                @if (Model.HasPhoto)
+                {
+                    <img src="@Model.PhotoUrl" alt="Fotografia de perfil de @Model.FullName" />
+                }
+                else
+                {
+                    <span class="profile-photo-placeholder" aria-label="Sem fotografia de perfil">@initial</span>
+                }
+                <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" class="profile-photo-upload">
+                    <input type="file" id="profilePhoto" name="photo" accept="image/jpeg,image/png,image/webp" aria-label="Escolher nova fotografia" />
+                    <label for="profilePhoto" title="Alterar fotografia"><i class="bi bi-camera-fill"></i><span class="visually-hidden">Alterar fotografia</span></label>
                 </form>
             </div>
-        </div>
-    </div>
-    <div class="col-lg-5">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h2 class="h5 mb-3">Informação de acesso</h2>
-                <dl class="mb-0">
-                    <dt class="text-muted small">Função</dt>
-                    <dd>@Model.Role</dd>
-                    @if (Model.EmployeeNumber is not null)
+            <div class="profile-hero-copy">
+                <span class="profile-hero-kicker">PERFIL DE UTILIZADOR</span>
+                <h2>@Model.FullName <i class="bi bi-patch-check-fill" aria-label="Conta autenticada"></i></h2>
+                <p class="profile-hero-role">@Model.Role · GestorRH Pro</p>
+                <div class="profile-hero-meta">
+                    <span><i class="bi bi-envelope"></i>@Model.Email</span>
+                    @if (!string.IsNullOrWhiteSpace(Model.EmployeeNumber))
                     {
-                        <dt class="text-muted small">Número de funcionário</dt>
-                        <dd>@Model.EmployeeNumber</dd>
+                        <span><i class="bi bi-person-vcard"></i>N.º @Model.EmployeeNumber</span>
                     }
-                    @if (Model.Department is not null)
+                    @if (!string.IsNullOrWhiteSpace(Model.Department))
                     {
-                        <dt class="text-muted small">Departamento</dt>
-                        <dd>@Model.Department</dd>
+                        <span><i class="bi bi-diagram-3"></i>@Model.Department</span>
                     }
-                    @if (Model.Position is not null)
-                    {
-                        <dt class="text-muted small">Cargo</dt>
-                        <dd>@Model.Position</dd>
-                    }
-                    @if (Model.HireDate.HasValue)
-                    {
-                        <dt class="text-muted small">Data de admissão</dt>
-                        <dd>@Model.HireDate.Value.ToString("d", System.Globalization.CultureInfo.GetCultureInfo("pt-PT"))</dd>
-                    }
-                </dl>
+                </div>
             </div>
         </div>
+        <a href="#profile-edit" class="profile-hero-edit"><i class="bi bi-pencil"></i>Editar perfil</a>
+    </section>
+
+    <div class="profile-card-grid">
+        <section class="profile-card" aria-labelledby="profile-personal-title">
+            <div class="profile-card-heading">
+                <span class="profile-card-icon"><i class="bi bi-person-lines-fill"></i></span>
+                <div><h2 id="profile-personal-title">Informações pessoais</h2><p>Dados associados à sua conta</p></div>
+            </div>
+            <dl class="profile-details">
+                <div><dt>Nome completo</dt><dd>@Model.FullName</dd></div>
+                <div><dt>Email</dt><dd>@Model.Email</dd></div>
+                <div><dt>Telefone</dt><dd>@(string.IsNullOrWhiteSpace(Model.PhoneNumber) ? "Não indicado" : Model.PhoneNumber)</dd></div>
+                @if (Model.BirthDate.HasValue)
+                {
+                    <div><dt>Data de nascimento</dt><dd>@Model.BirthDate.Value.ToString("d", pt)</dd></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Address))
+                {
+                    <div><dt>Morada</dt><dd>@Model.Address</dd></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Position))
+                {
+                    <div><dt>Cargo</dt><dd>@Model.Position</dd></div>
+                }
+                @if (Model.HireDate.HasValue)
+                {
+                    <div><dt>Data de admissão</dt><dd>@Model.HireDate.Value.ToString("d", pt)</dd></div>
+                }
+            </dl>
+        </section>
+
+        <section class="profile-card" aria-labelledby="profile-preferences-title">
+            <div class="profile-card-heading">
+                <span class="profile-card-icon"><i class="bi bi-sliders"></i></span>
+                <div><h2 id="profile-preferences-title">Preferências</h2><p>Personalize a apresentação</p></div>
+            </div>
+            <div class="profile-preference-row">
+                <span class="profile-preference-icon"><i class="bi bi-globe2"></i></span>
+                <span class="profile-preference-label">Idioma</span>
+                <span class="profile-preference-value">Português (Portugal)</span>
+            </div>
+            <div class="profile-preference-row">
+                <span class="profile-preference-icon"><i class="bi bi-palette"></i></span>
+                <span class="profile-preference-label">Tema</span>
+                <button type="button" id="profileThemeToggle" class="profile-theme-control">
+                    <span id="profileThemeValue">Modo claro</span><i class="bi bi-chevron-down"></i>
+                </button>
+            </div>
+            <p class="profile-card-note"><i class="bi bi-info-circle"></i> O idioma atual da aplicação é Português (Portugal).</p>
+        </section>
+
+        <section id="profile-edit" class="profile-card" aria-labelledby="profile-edit-title">
+            <div class="profile-card-heading">
+                <span class="profile-card-icon"><i class="bi bi-pencil-square"></i></span>
+                <div><h2 id="profile-edit-title">Editar dados pessoais</h2><p>As alterações são guardadas na sua conta</p></div>
+            </div>
+            <form asp-action="Index" method="post" class="profile-edit-form">
+                <div asp-validation-summary="All" class="text-danger small"></div>
+                <div class="profile-form-field">
+                    <label asp-for="FullName" class="form-label"></label>
+                    <input asp-for="FullName" class="form-control" autocomplete="name" />
+                    <span asp-validation-for="FullName" class="text-danger small"></span>
+                </div>
+                <div class="profile-form-field">
+                    <label asp-for="Email" class="form-label"></label>
+                    <input asp-for="Email" class="form-control" autocomplete="email" />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                    <small class="profile-form-hint">O email também é usado para iniciar sessão.</small>
+                </div>
+                <div class="profile-form-field">
+                    <label asp-for="PhoneNumber" class="form-label">Telefone</label>
+                    <input asp-for="PhoneNumber" class="form-control" autocomplete="tel" />
+                    <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
+                </div>
+                <button type="submit" class="profile-primary-button"><i class="bi bi-check2"></i>Guardar alterações</button>
+            </form>
+        </section>
+
+        <section class="profile-card" aria-labelledby="profile-security-title">
+            <div class="profile-card-heading">
+                <span class="profile-card-icon profile-security-icon"><i class="bi bi-shield-lock"></i></span>
+                <div><h2 id="profile-security-title">Segurança</h2><p>Proteja o acesso à sua conta</p></div>
+            </div>
+            <div class="profile-security-status">
+                <span class="profile-security-symbol"><i class="bi bi-envelope-check"></i></span>
+                <span><strong>Email</strong><small>@(Model.EmailConfirmed ? "Confirmado" : "Ainda não confirmado")</small></span>
+                <i class="bi @(Model.EmailConfirmed ? "bi-check-circle-fill text-success" : "bi-exclamation-circle-fill text-warning")"></i>
+            </div>
+            <div class="profile-security-status">
+                <span class="profile-security-symbol"><i class="bi bi-phone"></i></span>
+                <span><strong>Autenticação em dois passos</strong><small>@(Model.TwoFactorEnabled ? "Ativada" : "Desativada")</small></span>
+                <i class="bi @(Model.TwoFactorEnabled ? "bi-check-circle-fill text-success" : "bi-dash-circle text-muted")"></i>
+            </div>
+            <a asp-area="Identity" asp-page="/Account/Manage/ChangePassword" class="profile-security-link"><i class="bi bi-key"></i><span>Alterar palavra-passe</span><i class="bi bi-chevron-right"></i></a>
+            <a asp-area="Identity" asp-page="/Account/Manage/TwoFactorAuthentication" class="profile-security-link"><i class="bi bi-shield-check"></i><span>Configurar dois passos</span><i class="bi bi-chevron-right"></i></a>
+        </section>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const photoInput = document.getElementById('profilePhoto');
+            photoInput?.addEventListener('change', () => {
+                if (photoInput.files?.length) photoInput.form?.requestSubmit();
+            });
+
+            const themeButton = document.getElementById('themeToggle');
+            const profileThemeButton = document.getElementById('profileThemeToggle');
+            const profileThemeValue = document.getElementById('profileThemeValue');
+            const updateThemeLabel = () => {
+                const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+                if (profileThemeValue) profileThemeValue.textContent = isDark ? 'Modo escuro' : 'Modo claro';
+            };
+            updateThemeLabel();
+            themeButton?.addEventListener('click', updateThemeLabel);
+            profileThemeButton?.addEventListener('click', () => themeButton?.click());
+        })();
+    </script>
+}

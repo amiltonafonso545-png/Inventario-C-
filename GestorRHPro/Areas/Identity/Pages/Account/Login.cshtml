@@ -1,0 +1,79 @@
+@page
+@model GestorRHPro.Areas.Identity.Pages.Account.LoginModel
+@{
+    Layout = "/Views/Shared/_AuthLayout.cshtml";
+    ViewData["Title"] = "Iniciar sessão";
+}
+
+<div class="auth-page">
+    <section class="auth-card" aria-labelledby="login-title">
+        <div class="auth-aside">
+            <a class="auth-brand" asp-controller="Home" asp-action="Index" aria-label="GestorRH Pro">
+                <span class="auth-brand-mark">G</span>
+                <span>GestorRH <strong>Pro</strong></span>
+            </a>
+            <div class="auth-aside-content">
+                <span class="auth-eyebrow">GESTÃO DE PESSOAS</span>
+                <h1>As pessoas fazem a equipa.</h1>
+                <p>Aceda à sua área de trabalho e encontre num só lugar a informação de recursos humanos.</p>
+            </div>
+            <div class="auth-aside-foot"><span class="auth-status-dot"></span> Acesso protegido à sua conta</div>
+        </div>
+
+        <div class="auth-form-panel">
+            <div class="auth-mobile-brand">
+                <span class="auth-brand-mark">G</span>
+                <span>GestorRH <strong>Pro</strong></span>
+            </div>
+            <div class="auth-form-heading">
+                <span class="auth-form-icon" aria-hidden="true">↗</span>
+                <p class="auth-eyebrow">BEM-VINDO DE VOLTA</p>
+                <h2 id="login-title">Iniciar sessão</h2>
+                <p>Introduza os dados da sua conta para continuar.</p>
+            </div>
+
+            <form method="post" asp-route-returnUrl="@Model.ReturnUrl" class="auth-form">
+                <div asp-validation-summary="ModelOnly" class="auth-validation" role="alert"></div>
+                <div class="auth-field">
+                    <label asp-for="Input.Email">Email</label>
+                    <input asp-for="Input.Email" class="form-control" autocomplete="username" inputmode="email" placeholder="nome@empresa.pt" autofocus />
+                    <span asp-validation-for="Input.Email" class="auth-field-error"></span>
+                </div>
+                <div class="auth-field">
+                    <div class="auth-label-row">
+                        <label asp-for="Input.Password">Palavra-passe</label>
+                        <a asp-page="./ForgotPassword" class="auth-link">Esqueceu-se?</a>
+                    </div>
+                    <div class="auth-password-wrap">
+                        <input asp-for="Input.Password" class="form-control" autocomplete="current-password" placeholder="A sua palavra-passe" />
+                        <button class="auth-password-toggle" type="button" aria-label="Mostrar palavra-passe" data-password-toggle>Mostrar</button>
+                    </div>
+                    <span asp-validation-for="Input.Password" class="auth-field-error"></span>
+                </div>
+                <label class="auth-remember">
+                    <input asp-for="Input.RememberMe" />
+                    <span>Manter sessão iniciada</span>
+                </label>
+                <button type="submit" class="auth-submit">Entrar <span aria-hidden="true">→</span></button>
+            </form>
+
+            <p class="auth-help">Precisa de acesso? Peça ao administrador da sua organização.</p>
+        </div>
+    </section>
+    <footer class="auth-footer">GestorRH Pro <span>·</span> Gestão simples, equipa mais próxima.</footer>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.querySelectorAll('[data-password-toggle]').forEach(button => {
+            button.addEventListener('click', () => {
+                const input = button.closest('.auth-password-wrap').querySelector('input');
+                const reveal = input.type === 'password';
+                input.type = reveal ? 'text' : 'password';
+                button.textContent = reveal ? 'Ocultar' : 'Mostrar';
+                button.setAttribute('aria-label', reveal ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe');
+            });
+        });
+    </script>
+}

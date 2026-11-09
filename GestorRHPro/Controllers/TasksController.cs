@@ -46,7 +46,7 @@ public sealed class TasksController : Controller
             return View(input);
         }
 
-        _db.TaskItems.Add(new TaskItem
+        var task = new TaskItem
         {
             Title = input.Title.Trim(),
             Description = input.Description?.Trim(),
@@ -55,8 +55,28 @@ public sealed class TasksController : Controller
             Status = input.Status,
             AssignedEmployeeId = input.AssignedEmployeeId,
             CompletedAt = input.Status == WorkItemStatus.Done ? DateTime.UtcNow : null
-        });
+        };
+        _db.TaskItems.Add(task);
+
+        var assignedEmployee = input.AssignedEmployeeId.HasValue
+            ? await _db.Employees.FindAsync(input.AssignedEmployeeId.Value)
+            : null;
+        if (!string.IsNullOrWhiteSpace(assignedEmployee?.UserId))
+        {
+            _db.Notifications.Add(new Notification
+            {
+                UserId = assignedEmployee.UserId,
+                Title = "Nova tarefa atribuída",
+                Message = $"A tarefa «{task.Title}» foi atribuída a si.",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
         await _db.SaveChangesAsync();
+        TempData["TaskNotice"] = assignedEmployee is null
+            ? "Tarefa criada sem funcionário atribuído."
+            : string.IsNullOrWhiteSpace(assignedEmployee.UserId)
+                ? "Tarefa criada, mas o funcionário ainda não tem uma conta para receber notificações."
+                : "Tarefa criada e funcionário notificado.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -96,6 +116,7 @@ public sealed class TasksController : Controller
             return View(input);
         }
 
+        var previousAssignedEmployeeId = task.AssignedEmployeeId;
         task.Title = input.Title.Trim();
         task.Description = input.Description?.Trim();
         task.DueDate = input.DueDate?.Date;
@@ -106,7 +127,40 @@ public sealed class TasksController : Controller
             task.Status = input.Status;
             task.CompletedAt = input.Status == WorkItemStatus.Done ? DateTime.UtcNow : null;
         }
+        if (previousAssignedEmployeeId != input.AssignedEmployeeId)
+        {
+            if (previousAssignedEmployeeId.HasValue)
+            {
+                var previousEmployee = await _db.Employees.FindAsync(previousAssignedEmployeeId.Value);
+                if (!string.IsNullOrWhiteSpace(previousEmployee?.UserId))
+                {
+                    _db.Notifications.Add(new Notification
+                    {
+                        UserId = previousEmployee.UserId,
+                        Title = "Tarefa atualizada",
+                        Message = $"A tarefa «{task.Title}» deixou de estar atribuída a si.",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+
+            if (input.AssignedEmployeeId.HasValue)
+            {
+                var newEmployee = await _db.Employees.FindAsync(input.AssignedEmployeeId.Value);
+                if (!string.IsNullOrWhiteSpace(newEmployee?.UserId))
+                {
+                    _db.Notifications.Add(new Notification
+                    {
+                        UserId = newEmployee.UserId,
+                        Title = "Nova tarefa atribuída",
+                        Message = $"A tarefa «{task.Title}» foi atribuída a si.",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+        }
         await _db.SaveChangesAsync();
+        TempData["TaskNotice"] = "Tarefa atualizada.";
         return RedirectToAction(nameof(Index));
     }
 

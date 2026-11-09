@@ -1,0 +1,51 @@
+@model GestorRHPro.ViewModels.EmployeeTasksPageViewModel
+@using GestorRHPro.Models
+@using System.Globalization
+@{
+    ViewData["Title"] = "As minhas tarefas";
+    var pt = CultureInfo.GetCultureInfo("pt-PT");
+}
+
+<div class="page-heading mb-4">
+    <div><p class="text-muted mb-1">Área pessoal</p><h1 class="h3 mb-0">As minhas tarefas</h1></div>
+</div>
+
+@if (!Model.HasEmployeeRecord)
+{
+    <div class="alert alert-info" role="status">A sua conta ainda não está associada a um registo de funcionário. Contacte o administrador ou os Recursos Humanos.</div>
+}
+else if (Model.Tasks.Count == 0)
+{
+    <div class="surface-card p-4"><p class="text-muted mb-0">Ainda não tem tarefas atribuídas.</p></div>
+}
+else
+{
+    <div class="employee-dashboard-grid">
+        @foreach (var task in Model.Tasks)
+        {
+            var statusText = task.Status switch
+            {
+                WorkItemStatus.ToDo => "Por iniciar",
+                WorkItemStatus.InProgress => "Em curso",
+                _ => "Concluída"
+            };
+            var priorityText = task.Priority switch
+            {
+                TaskPriority.High => "Alta",
+                TaskPriority.Low => "Baixa",
+                _ => "Normal"
+            };
+            <article class="surface-card p-4">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div><span class="text-muted small">@priorityText prioridade</span><h2 class="h5 mt-1">@task.Title</h2></div>
+                    <span class="badge @(task.Status == WorkItemStatus.Done ? "text-bg-success" : task.Status == WorkItemStatus.InProgress ? "text-bg-primary" : "text-bg-secondary")">@statusText</span>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(task.Description))
+                {
+                    <p class="text-secondary small">@task.Description</p>
+                }
+                <div class="text-muted small"><i class="bi bi-calendar-event me-1"></i>Prazo: @(task.DueDate?.ToString("d", pt) ?? "Sem prazo definido")</div>
+            </article>
+        }
+    </div>
+}

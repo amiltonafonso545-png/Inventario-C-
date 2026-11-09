@@ -7,6 +7,12 @@
 
 # Bases de dados locais e ficheiros temporários
 GestorRHPro/*.db
+*.db-shm
+*.db-wal
+GestorRHPro/wwwroot/uploads/**
+GestorRHPro/App_Data/ProfilePhotos/
+GestorRHPro/App_Data/EmployeeDocuments/
+GestorRHPro/App_Data/DataProtection-Keys/
 *.log
 
 # Segredos locais do ASP.NET Core
