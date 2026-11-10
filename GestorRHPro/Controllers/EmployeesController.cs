@@ -101,6 +101,101 @@ public class EmployeesController : Controller
 
         return View("AccountsCreated", result);
     }
+
+    [HttpPost, ValidateAntiForgeryToken, Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> RecoverAccount(int id)
+    {
+        Response.Headers.CacheControl = "no-store, no-cache";
+        Response.Headers.Pragma = "no-cache";
+        var result = new EmployeeAccountsResultViewModel();
+        var employee = await _db.Employees.FindAsync(id);
+        if (employee is null) return NotFound();
+
+        var email = employee.Email?.Trim();
+        if (string.IsNullOrWhiteSpace(email))
+            result.Skipped.Add($"{employee.FullName}: falta um email para recuperar o acesso.");
+        else
+        {
+            var user = !string.IsNullOrWhiteSpace(employee.UserId)
+                ? await _userManager.FindByIdAsync(employee.UserId)
+                : null;
+            user ??= await _userManager.FindByEmailAsync(email);
+
+            if (user is not null && (await _userManager.IsInRoleAsync(user, "Administrator")
+                || await _userManager.IsInRoleAsync(user, "HRManager")))
+                result.Skipped.Add($"{employee.FullName}: o email está associado a uma conta administrativa; não foi alterada.");
+            else if (user is not null && await _db.Employees.AnyAsync(other => other.Id != employee.Id && other.UserId == user.Id))
+                result.Skipped.Add($"{employee.FullName}: esta conta já está associada a outro funcionário.");
+            else
+            {
+                if (!await _roleManager.RoleExistsAsync("Employee"))
+                {
+                    var roleResult = await _roleManager.CreateAsync(new IdentityRole("Employee"));
+                    if (!roleResult.Succeeded)
+                        result.Skipped.Add("Não foi possível preparar a função de funcionário: "
+                            + string.Join(" ", roleResult.Errors.Select(error => error.Description)));
+                }
+
+                if (result.Skipped.Count == 0)
+                {
+                    var password = GenerateInitialPassword();
+                    await using var transaction = await _db.Database.BeginTransactionAsync();
+                    if (user is null)
+                    {
+                        user = new ApplicationUser
+                        {
+                            UserName = email,
+                            Email = email,
+                            EmailConfirmed = true,
+                            FullName = employee.FullName,
+                            Role = "Employee"
+                        };
+                        var createResult = await _userManager.CreateAsync(user, password);
+                        if (!createResult.Succeeded)
+                        {
+                            await transaction.RollbackAsync();
+                            result.Skipped.Add($"{employee.FullName}: {string.Join(" ", createResult.Errors.Select(error => error.Description))}");
+                            return View("AccountsCreated", result);
+                        }
+                    }
+                    else
+                    {
+                        var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+                        var resetResult = await _userManager.ResetPasswordAsync(user, resetToken, password);
+                        if (!resetResult.Succeeded)
+                        {
+                            await transaction.RollbackAsync();
+                            result.Skipped.Add($"{employee.FullName}: {string.Join(" ", resetResult.Errors.Select(error => error.Description))}");
+                            return View("AccountsCreated", result);
+                        }
+                    }
+
+                    if (!await _userManager.IsInRoleAsync(user, "Employee"))
+                    {
+                        var addRoleResult = await _userManager.AddToRoleAsync(user, "Employee");
+                        if (!addRoleResult.Succeeded)
+                        {
+                            await transaction.RollbackAsync();
+                            result.Skipped.Add($"{employee.FullName}: não foi possível atribuir a função de funcionário.");
+                            return View("AccountsCreated", result);
+                        }
+                    }
+
+                    user.FullName = employee.FullName;
+                    user.Role = "Employee";
+                    user.LockoutEnd = null;
+                    await _userManager.ResetAccessFailedCountAsync(user);
+                    employee.UserId = user.Id;
+                    await _db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    result.Created.Add(new EmployeeAccountCredential(employee.FullName, user.Email ?? email, password));
+                }
+            }
+        }
+
+        return View("AccountsCreated", result);
+    }
+
     private static string GenerateInitialPassword()
     {
         const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";

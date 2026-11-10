@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IO.Compression;
+using System.Xml.Linq;
 
 namespace GestorRHPro.Controllers;
 
@@ -190,6 +192,57 @@ public sealed class EmployeePortalController : Controller
             .Select(item => new EmployeeTaskRow(item.Id, item.Title, item.Description, item.DueDate, item.Priority, item.Status))
             .ToListAsync();
         return View(new EmployeeTasksPageViewModel { HasEmployeeRecord = true, Tasks = tasks });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ViewDocument(int id)
+    {
+        var employee = await GetCurrentEmployeeAsync();
+        if (employee is null) return Forbid();
+
+        var document = await _db.EmployeeDocuments.FirstOrDefaultAsync(item => item.Id == id && item.EmployeeId == employee.Id);
+        if (document is null) return NotFound();
+
+        var path = _documentStorage.ResolvePath(document.FilePath);
+        if (path is null) return NotFound();
+
+        var extension = Path.GetExtension(document.FileName).ToLowerInvariant();
+        if (extension == ".docx")
+        {
+            try
+            {
+                await using var stream = System.IO.File.OpenRead(path);
+                using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+                var content = archive.GetEntry("word/document.xml");
+                if (content is null) return BadRequest("O documento Word não contém conteúdo legível.");
+                await using var contentStream = content.Open();
+                var xml = await XDocument.LoadAsync(contentStream, LoadOptions.None, HttpContext.RequestAborted);
+                XNamespace word = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                var paragraphs = xml.Descendants(word + "p")
+                    .Select(paragraph => string.Concat(paragraph.Descendants(word + "t").Select(text => text.Value)))
+                    .Where(text => !string.IsNullOrWhiteSpace(text))
+                    .ToList();
+                return View("DocumentPreview", new EmployeeDocumentPreviewViewModel(document.FileName, paragraphs));
+            }
+            catch (InvalidDataException)
+            {
+                return BadRequest("O ficheiro Word está danificado ou não é válido.");
+            }
+        }
+
+        var contentType = extension switch
+        {
+            ".pdf" => "application/pdf",
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".txt" => "text/plain; charset=utf-8",
+            ".csv" => "text/csv; charset=utf-8",
+            _ => "application/octet-stream"
+        };
+        Response.Headers["Content-Disposition"] = "inline";
+        return PhysicalFile(path, contentType, enableRangeProcessing: true);
     }
 
     [HttpGet]

@@ -14,12 +14,21 @@
 <td>
 @if (!string.IsNullOrWhiteSpace(e.UserId))
 {
-    <span class="badge text-bg-success">Ativo</span>
+    <span class="badge text-bg-success">Conta associada</span>
+    @if (User.IsInRole("Administrator"))
+    {
+        <form asp-action="RecoverAccount" asp-route-id="@e.Id" method="post" class="d-inline ms-1">
+            <button type="submit" class="btn btn-sm btn-outline-warning">Recuperar acesso</button>
+        </form>
+    }
 }
 else if (User.IsInRole("Administrator"))
 {
     <form asp-action="CreateAccount" asp-route-id="@e.Id" method="post" class="d-inline">
         <button type="submit" class="btn btn-sm btn-outline-primary">Criar acesso e gerar senha</button>
+    </form>
+    <form asp-action="RecoverAccount" asp-route-id="@e.Id" method="post" class="d-inline ms-1">
+        <button type="submit" class="btn btn-sm btn-outline-warning">Recuperar acesso</button>
     </form>
 }
 else

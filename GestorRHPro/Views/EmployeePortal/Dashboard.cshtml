@@ -141,7 +141,7 @@
                         <ul class="portal-document-list">
                             @foreach (var document in Model.Documents)
                             {
-                                <li><a asp-action="DownloadDocument" asp-route-id="@document.Id"><i class="bi bi-file-earmark-arrow-down"></i><span><strong>@document.FileName</strong><small>@document.Category · @document.UploadedAt.ToLocalTime().ToString("d", pt)</small></span></a></li>
+                                <li><a asp-action="ViewDocument" asp-route-id="@document.Id" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i><span><strong>@document.FileName</strong><small>@document.Category · @document.UploadedAt.ToLocalTime().ToString("d", pt)</small></span></a></li>
                             }
                         </ul>
                     }
