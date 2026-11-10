@@ -1,0 +1,32 @@
+@{
+    ViewData["Title"] = "Relatórios";
+    var employees = Convert.ToInt32(ViewBag.Employees);
+    var activeEmployees = Convert.ToInt32(ViewBag.ActiveEmployees);
+    var departments = Convert.ToInt32(ViewBag.Departments);
+    var pendingLeaves = Convert.ToInt32(ViewBag.Leaves);
+    var positions = Convert.ToInt32(ViewBag.Positions);
+    var documents = Convert.ToInt32(ViewBag.Documents);
+    var presentToday = Convert.ToInt32(ViewBag.PresentToday);
+    var expiredDocuments = Convert.ToInt32(ViewBag.ExpiredDocuments);
+    var activePercent = employees == 0 ? 0 : (int)Math.Round(activeEmployees * 100.0 / employees);
+    var presencePercent = activeEmployees == 0 ? 0 : Math.Min(100, (int)Math.Round(presentToday * 100.0 / activeEmployees));
+}
+<section class="workspace-page report-workspace">
+    <header class="workspace-hero">
+        <div class="workspace-hero-copy"><p class="eyebrow">VISÃO GERAL · INDICADORES</p><h1>Relatórios</h1><p>Um resumo visual da equipa, da presença e dos principais elementos de gestão.</p></div>
+        <div class="workspace-hero-actions"><span class="workspace-status good"><i class="bi bi-arrow-repeat"></i> Dados atuais</span></div>
+    </header>
+    <div class="workspace-metrics">
+        <div class="workspace-metric"><span class="workspace-metric-icon"><i class="bi bi-people"></i></span><span class="workspace-metric-copy"><span>Funcionários</span><strong>@employees</strong></span></div>
+        <div class="workspace-metric"><span class="workspace-metric-icon teal"><i class="bi bi-person-check"></i></span><span class="workspace-metric-copy"><span>Ativos</span><strong>@activeEmployees</strong></span></div>
+        <div class="workspace-metric"><span class="workspace-metric-icon amber"><i class="bi bi-calendar2-week"></i></span><span class="workspace-metric-copy"><span>Férias pendentes</span><strong>@pendingLeaves</strong></span></div>
+        <div class="workspace-metric"><span class="workspace-metric-icon rose"><i class="bi bi-folder2-open"></i></span><span class="workspace-metric-copy"><span>Documentos expirados</span><strong>@expiredDocuments</strong></span></div>
+    </div>
+    <div class="report-grid">
+        <article class="report-card"><div class="report-card-head"><i class="bi bi-person-lines-fill"></i><div><h2>Estado da equipa</h2><p>Funcionários ativos face ao total registado</p></div></div><div class="report-bars"><div class="report-bar-row"><div class="report-bar-label"><span>Ativos</span><strong>@activeEmployees</strong></div><div class="report-bar-track"><span style="width:@activePercent%"></span></div></div><div class="report-bar-row"><div class="report-bar-label"><span>Total de funcionários</span><strong>@employees</strong></div><div class="report-bar-track"><span style="width:@(employees == 0 ? 0 : 100)%"></span></div></div><div class="report-bar-label"><span>Taxa de atividade</span><strong>@activePercent%</strong></div></div></article>
+        <article class="report-card"><div class="report-card-head"><i class="bi bi-clock-history"></i><div><h2>Presença de hoje</h2><p>Registos de entrada face à equipa ativa</p></div></div><div class="report-bars"><div class="report-bar-row"><div class="report-bar-label"><span>Entradas registadas</span><strong>@presentToday</strong></div><div class="report-bar-track"><span style="width:@presencePercent%"></span></div></div><div class="report-bar-label"><span>Funcionários ativos</span><strong>@activeEmployees</strong></div><div class="report-bar-label"><span>Presença registada</span><strong>@presencePercent%</strong></div><a asp-controller="Attendance" asp-action="Index" class="report-shortcut-link">Ver assiduidade <i class="bi bi-arrow-right"></i></a></div></article>
+        <article class="report-card"><div class="report-card-head"><i class="bi bi-diagram-3"></i><div><h2>Estrutura organizacional</h2><p>Organização das funções e das equipas</p></div></div><div class="report-bars"><div class="report-bar-label"><span>Departamentos</span><strong>@departments</strong></div><div class="report-bar-label"><span>Cargos registados</span><strong>@positions</strong></div><div class="report-bar-label"><span>Média de pessoas por departamento</span><strong>@(departments == 0 ? "0" : (employees / (double)departments).ToString("0.0"))</strong></div><div class="report-shortcuts"><a asp-controller="Departments" asp-action="Index"><i class="bi bi-diagram-3"></i>Departamentos</a><a asp-controller="Positions" asp-action="Index"><i class="bi bi-briefcase"></i>Cargos</a></div></div></article>
+        <article class="report-card"><div class="report-card-head"><i class="bi bi-folder2-open"></i><div><h2>Documentação</h2><p>Ficheiros disponíveis e estado de validade</p></div></div><div class="report-bars"><div class="report-bar-label"><span>Documentos partilhados</span><strong>@documents</strong></div><div class="report-bar-row"><div class="report-bar-label"><span>Expirados</span><strong>@expiredDocuments</strong></div><div class="report-bar-track"><span style="width:@(documents == 0 ? 0 : Math.Min(100, (int)Math.Round(expiredDocuments * 100.0 / documents)))%;background:linear-gradient(90deg,#df7187,#f0ad5c)"></span></div></div><div class="report-shortcuts"><a asp-controller="Documents" asp-action="Index"><i class="bi bi-folder2-open"></i>Abrir arquivo</a><a asp-controller="LeaveRequests" asp-action="Index"><i class="bi bi-calendar2-week"></i>Rever férias</a></div></div></article>
+    </div>
+    <div class="report-shortcuts"><a asp-controller="Employees" asp-action="Index"><i class="bi bi-people"></i>Funcionários</a><a asp-controller="Attendance" asp-action="Index"><i class="bi bi-clock-history"></i>Assiduidade</a><a asp-controller="LeaveRequests" asp-action="Index"><i class="bi bi-calendar2-week"></i>Férias</a><a asp-controller="Documents" asp-action="Index"><i class="bi bi-folder2-open"></i>Documentos</a></div>
+</section>

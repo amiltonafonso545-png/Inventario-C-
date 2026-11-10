@@ -4,6 +4,9 @@
     var openCount = Model.Count(task => task.Status != GestorRHPro.Models.WorkItemStatus.Done);
     var overdueCount = Model.Count(task => task.Status != GestorRHPro.Models.WorkItemStatus.Done && task.DueDate.HasValue && task.DueDate.Value.Date < DateTime.Today);
 }
+<section class="workspace-page work-management-page">
+    <header class="workspace-hero"><div class="workspace-hero-copy"><p class="eyebrow">ORGANIZAÇÃO · EXECUÇÃO</p><h1>Gestão de tarefas</h1><p>Acompanhe prioridades, responsáveis e prazos num quadro único para toda a equipa.</p></div><div class="workspace-hero-actions"><a asp-action="Create" class="btn btn-light"><i class="bi bi-plus-lg me-2"></i>Nova tarefa</a></div></header>
+    <div class="workspace-metrics"><div class="workspace-metric"><span class="workspace-metric-icon"><i class="bi bi-list-check"></i></span><span class="workspace-metric-copy"><span>Total de tarefas</span><strong>@Model.Count</strong></span></div><div class="workspace-metric"><span class="workspace-metric-icon amber"><i class="bi bi-hourglass-split"></i></span><span class="workspace-metric-copy"><span>Em aberto</span><strong>@openCount</strong></span></div><div class="workspace-metric"><span class="workspace-metric-icon rose"><i class="bi bi-alarm"></i></span><span class="workspace-metric-copy"><span>Atrasadas</span><strong>@overdueCount</strong></span></div><div class="workspace-metric"><span class="workspace-metric-icon teal"><i class="bi bi-check2-circle"></i></span><span class="workspace-metric-copy"><span>Concluídas</span><strong>@Model.Count(task => task.Status == GestorRHPro.Models.WorkItemStatus.Done)</strong></span></div></div>
 <div class="module-heading">
     <div><p class="eyebrow">ORGANIZAÇÃO DA EQUIPA</p><h1>Tarefas</h1><p class="text-secondary">Atribui tarefas, acompanha os prazos e atualiza o estado.</p></div>
     <a asp-action="Create" class="btn btn-brand"><i class="bi bi-plus-lg me-2"></i>Nova tarefa</a>
@@ -54,4 +57,4 @@
             </table>
         </div>
     }
-</div>
+</div></section>

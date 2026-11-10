@@ -12,7 +12,7 @@ public class PositionsController : Controller
 {
     private readonly ApplicationDbContext _db;
     public PositionsController(ApplicationDbContext db) => _db = db;
-    public async Task<IActionResult> Index() => View(await _db.Positions.Include(p=>p.Department).ToListAsync());
+    public async Task<IActionResult> Index() => View(await _db.Positions.Include(p=>p.Department).Include(p=>p.Employees).ToListAsync());
     public async Task<IActionResult> Create(){ ViewBag.Departments=await _db.Departments.ToListAsync(); return View(); }
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Position p){ if(!ModelState.IsValid){ViewBag.Departments=await _db.Departments.ToListAsync();return View(p);} _db.Positions.Add(p); await _db.SaveChangesAsync(); return RedirectToAction(nameof(Index)); }
@@ -58,7 +58,7 @@ public class LeaveRequestsController : Controller
 {
     private readonly ApplicationDbContext _db;
     public LeaveRequestsController(ApplicationDbContext db) => _db = db;
-    public async Task<IActionResult> Index() => View(await _db.LeaveRequests.Include(l=>l.Employee).OrderByDescending(l=>l.RequestedAt).ToListAsync());
+    public async Task<IActionResult> Index() => View(await _db.LeaveRequests.Include(l=>l.Employee).OrderBy(l=>l.Status == LeaveStatus.Pending ? 0 : 1).ThenByDescending(l=>l.RequestedAt).ToListAsync());
     public async Task<IActionResult> Create(){ await LoadEmployeesAsync(); return View(); }
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(int? employeeId, DateTime? startDate, DateTime? endDate, string? reason)
@@ -202,7 +202,12 @@ public class ReportsController : Controller
         ViewBag.Employees = await _db.Employees.CountAsync();
         ViewBag.Departments = await _db.Departments.CountAsync();
         ViewBag.Leaves = await _db.LeaveRequests.CountAsync(l=>l.Status==LeaveStatus.Pending);
-        return View();
+        ViewBag.ActiveEmployees = await _db.Employees.CountAsync(employee => employee.Status == EmployeeStatus.Active);
+        ViewBag.Positions = await _db.Positions.CountAsync();
+        ViewBag.Documents = await _db.EmployeeDocuments.CountAsync();
+        ViewBag.PresentToday = await _db.Attendances.CountAsync(attendance => attendance.Date == DateTime.UtcNow.Date && attendance.CheckIn != null);
+        ViewBag.ExpiredDocuments = await _db.EmployeeDocuments.CountAsync(document => document.ExpiryDate.HasValue && document.ExpiryDate.Value < DateTime.Today);
+        return View("Dashboard");
     }
 }
 [Authorize]

@@ -5,6 +5,9 @@
     var pt = CultureInfo.GetCultureInfo("pt-PT");
     var total = Model.Sum(record => record.NetSalary);
 }
+<section class="workspace-page work-management-page">
+    <header class="workspace-hero"><div class="workspace-hero-copy"><p class="eyebrow">COMPENSAÇÃO · PROCESSAMENTO</p><h1>Gestão salarial</h1><p>Consulte os registos mensais, componentes salariais e valores líquidos da equipa.</p></div><div class="workspace-hero-actions"><a asp-action="Create" class="btn btn-light"><i class="bi bi-plus-lg me-2"></i>Novo registo</a></div></header>
+    <div class="workspace-metrics"><div class="workspace-metric"><span class="workspace-metric-icon"><i class="bi bi-cash-stack"></i></span><span class="workspace-metric-copy"><span>Total líquido</span><strong>@total.ToString("C0", pt)</strong></span></div><div class="workspace-metric"><span class="workspace-metric-icon teal"><i class="bi bi-receipt"></i></span><span class="workspace-metric-copy"><span>Registos salariais</span><strong>@Model.Count</strong></span></div><div class="workspace-metric"><span class="workspace-metric-icon amber"><i class="bi bi-people"></i></span><span class="workspace-metric-copy"><span>Funcionários incluídos</span><strong>@Model.Select(record => record.EmployeeId).Distinct().Count()</strong></span></div><div class="workspace-metric"><span class="workspace-metric-icon rose"><i class="bi bi-calendar3"></i></span><span class="workspace-metric-copy"><span>Períodos cobertos</span><strong>@Model.Select(record => new { record.Year, record.Month }).Distinct().Count()</strong></span></div></div>
 <div class="module-heading">
     <div><p class="eyebrow">GESTÃO DE COMPENSAÇÕES</p><h1>Registos salariais</h1><p class="text-secondary">Valores mensais por funcionário. Acesso restrito a Administrador e RH.</p></div>
     <a asp-action="Create" class="btn btn-brand"><i class="bi bi-plus-lg me-2"></i>Novo salário</a>
@@ -43,4 +46,4 @@
             </table>
         </div>
     }
-</div>
+</div></section>

@@ -4,6 +4,8 @@
     ViewData["Title"] = "Os meus documentos";
     var pt = CultureInfo.GetCultureInfo("pt-PT");
 }
+@{ var expiredDocuments = Model.Documents.Count(document => document.ExpiryDate.HasValue && document.ExpiryDate.Value.Date < DateTime.Today); var expiringDocuments = Model.Documents.Count(document => document.ExpiryDate.HasValue && document.ExpiryDate.Value.Date >= DateTime.Today && document.ExpiryDate.Value.Date <= DateTime.Today.AddDays(30)); }
+<section class="workspace-page employee-portal-summary"><header class="workspace-hero"><div class="workspace-hero-copy"><p class="eyebrow">ARQUIVO · ÁREA PESSOAL</p><h1>Os meus documentos</h1><p>Aceda aos ficheiros que os Recursos Humanos partilharam consigo.</p></div><div class="workspace-hero-actions"><span class="workspace-status good"><i class="bi bi-shield-check"></i> Acesso privado</span></div></header><div class="workspace-metrics"><div class="workspace-metric"><span class="workspace-metric-icon"><i class="bi bi-folder2-open"></i></span><span class="workspace-metric-copy"><span>Documentos disponíveis</span><strong>@Model.Documents.Count</strong></span></div><div class="workspace-metric"><span class="workspace-metric-icon teal"><i class="bi bi-shield-check"></i></span><span class="workspace-metric-copy"><span>Válidos ou sem validade</span><strong>@(Model.Documents.Count - expiredDocuments)</strong></span></div><div class="workspace-metric"><span class="workspace-metric-icon amber"><i class="bi bi-calendar2-event"></i></span><span class="workspace-metric-copy"><span>Expiram em 30 dias</span><strong>@expiringDocuments</strong></span></div><div class="workspace-metric"><span class="workspace-metric-icon rose"><i class="bi bi-calendar2-x"></i></span><span class="workspace-metric-copy"><span>Expirados</span><strong>@expiredDocuments</strong></span></div></div></section>
 
 <div class="page-heading mb-4">
     <div><p class="text-muted mb-1">Área pessoal</p><h1 class="h3 mb-0">Os meus documentos</h1></div>
@@ -27,7 +29,7 @@ else
                 @foreach (var document in Model.Documents)
                 {
                     <tr>
-                        <td>@document.FileName</td>
+                        <td><i class="bi bi-file-earmark-text me-2 text-primary"></i><a asp-action="ViewDocument" asp-route-id="@document.Id" target="_blank" rel="noopener" class="workspace-file-link">@document.FileName</a></td>
                         <td>@document.Category</td>
                         <td>@document.UploadedAt.ToLocalTime().ToString("d", pt)</td>
                         <td>@(document.ExpiryDate?.ToString("d", pt) ?? "—")</td>

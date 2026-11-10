@@ -1,4 +1,9 @@
 @model IEnumerable<GestorRHPro.Models.Employee>
+@{ var workspaceEmployees = Model.ToList(); var workspaceActive = workspaceEmployees.Count(e => e.Status == GestorRHPro.Models.EmployeeStatus.Active); var workspaceLinked = workspaceEmployees.Count(e => !string.IsNullOrWhiteSpace(e.UserId)); }
+<section class="workspace-page">
+<header class="workspace-hero"><div class="workspace-hero-copy"><p class="eyebrow">GESTÃO DE PESSOAS · EQUIPA</p><h1>Funcionários</h1><p>Explore os perfis, departamentos e acessos da sua equipa num só lugar.</p></div><div class="workspace-hero-actions"><a asp-action="Create" class="btn btn-light"><i class="bi bi-person-plus me-2"></i>Novo funcionário</a></div></header>
+<div class="workspace-metrics"><div class="workspace-metric"><span class="workspace-metric-icon"><i class="bi bi-people"></i></span><span class="workspace-metric-copy"><span>Registos</span><strong>@workspaceEmployees.Count</strong></span></div><div class="workspace-metric"><span class="workspace-metric-icon teal"><i class="bi bi-person-check"></i></span><span class="workspace-metric-copy"><span>Ativos</span><strong>@workspaceActive</strong></span></div><div class="workspace-metric"><span class="workspace-metric-icon amber"><i class="bi bi-person-lock"></i></span><span class="workspace-metric-copy"><span>Com acesso</span><strong>@workspaceLinked</strong></span></div><div class="workspace-metric"><span class="workspace-metric-icon rose"><i class="bi bi-person-dash"></i></span><span class="workspace-metric-copy"><span>Sem acesso</span><strong>@(workspaceEmployees.Count - workspaceLinked)</strong></span></div></div>
+<section class="workspace-panel"><div class="workspace-panel-head"><div><h2>Diretório da equipa</h2><p>Consulte e atualize os registos de cada funcionário.</p></div><form asp-action="Index" method="get" class="workspace-tools"><input class="workspace-search" type="search" name="search" value="@Context.Request.Query["search"]" placeholder="Pesquisar por nome ou email"/><button class="btn btn-brand btn-sm" type="submit"><i class="bi bi-search"></i></button></form></div>
 @{ ViewData["Title"]="Funcionários"; }
 <a asp-action="Create" class="btn btn-primary mb-3">Novo Funcionário</a>
 @if (TempData["EmployeeAccountError"] is string accountError)
@@ -10,7 +15,7 @@
 <tbody>
 @foreach(var e in Model){
 <tr>
-<td>@e.FullName</td><td>@e.Email</td><td>@e.Department?.Name</td><td>@e.Position?.Name</td><td>@e.Status</td>
+<td><div class="workspace-person"><span class="workspace-person-mark">@(string.IsNullOrWhiteSpace(e.FullName) ? "?" : e.FullName[..1].ToUpperInvariant())</span><span class="workspace-person-copy"><strong>@e.FullName</strong><small>@e.Email · @e.InternalNumber</small></span></div></td><td>@e.Email</td><td>@(e.Department?.Name ?? "Sem departamento")</td><td>@(e.Position?.Name ?? "Sem cargo")</td><td><span class="workspace-status @(e.Status == GestorRHPro.Models.EmployeeStatus.Active ? "good" : "")">@(e.Status == GestorRHPro.Models.EmployeeStatus.Active ? "Ativo" : e.Status == GestorRHPro.Models.EmployeeStatus.OnLeave ? "De licença" : "Inativo")</span></td>
 <td>
 @if (!string.IsNullOrWhiteSpace(e.UserId))
 {
@@ -43,4 +48,4 @@ else
 </td>
 </tr>
 }
-</tbody></table>
+</tbody></table></section></section>
