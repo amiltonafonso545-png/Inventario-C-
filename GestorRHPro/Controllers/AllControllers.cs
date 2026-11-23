@@ -6,6 +6,7 @@ using GestorRHPro.Models;
 using GestorRHPro.Services;
 using GestorRHPro.ViewModels;
 using System.Globalization;
+using System.Text;
 namespace GestorRHPro.Controllers;
 [Authorize(Roles = "Administrator,HRManager")]
 public class PositionsController : Controller
@@ -43,15 +44,89 @@ public class PositionsController : Controller
     public async Task<IActionResult> DeleteConfirmed(int id){ var p=await _db.Positions.FindAsync(id); if(p!=null){_db.Positions.Remove(p); await _db.SaveChangesAsync();} return RedirectToAction(nameof(Index)); }
 }
 [Authorize(Roles = "Administrator,HRManager")]
-public class AttendanceController : Controller
+public class AttendanceController(ApplicationDbContext db, AttendanceSchedule schedule) : Controller
 {
-    private readonly ApplicationDbContext _db;
-    public AttendanceController(ApplicationDbContext db) => _db = db;
-    public async Task<IActionResult> Index() => View(await _db.Attendances.Include(a=>a.Employee).OrderByDescending(a=>a.Date).ToListAsync());
+    public async Task<IActionResult> Index(bool lateOnly = false)
+    {
+        var attendance = db.Attendances.AsNoTracking();
+        if (lateOnly)
+            attendance = attendance.Where(record => record.Status == AttendanceStatus.Late);
+
+        ViewData["LateOnly"] = lateOnly;
+        ViewData["ExportEmployees"] = await db.Employees.AsNoTracking()
+            .OrderBy(employee => employee.FullName)
+            .Select(employee => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(
+                employee.FullName + " (" + employee.InternalNumber + ")", employee.Id.ToString()))
+            .ToListAsync();
+
+        return View(await attendance.Include(record => record.Employee)
+            .OrderByDescending(record => record.Date)
+            .ThenByDescending(record => record.CheckIn)
+            .ToListAsync());
+    }
+
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckIn(int employeeId){ _db.Attendances.Add(new Attendance{EmployeeId=employeeId,Date=DateTime.UtcNow.Date,CheckIn=DateTime.UtcNow,Status=AttendanceStatus.Present}); await _db.SaveChangesAsync(); return RedirectToAction(nameof(Index)); }
+    public async Task<IActionResult> Export(int? employeeId)
+    {
+        if (!ModelState.IsValid) return BadRequest();
+        if (employeeId.HasValue && !await db.Employees.AnyAsync(employee => employee.Id == employeeId.Value))
+            return NotFound();
+
+        var query = db.Attendances.AsNoTracking();
+        if (employeeId.HasValue)
+            query = query.Where(record => record.EmployeeId == employeeId.Value);
+
+        var records = await query.Include(record => record.Employee)
+            .OrderBy(record => record.Employee.FullName)
+            .ThenByDescending(record => record.Date)
+            .ThenByDescending(record => record.CheckIn)
+            .ToListAsync();
+
+        var csv = new StringBuilder("\uFEFFFuncionário;Número interno;Data;Entrada;Saída;Estado\r\n");
+        foreach (var record in records)
+        {
+            var status = record.Status switch
+            {
+                AttendanceStatus.Present => "Presente",
+                AttendanceStatus.Late => "Atrasado",
+                AttendanceStatus.Absent => "Falta",
+                AttendanceStatus.OnLeave => "De licença",
+                _ => record.Status.ToString()
+            };
+            csv.AppendJoin(';',
+                CsvField(record.Employee.FullName),
+                CsvField(record.Employee.InternalNumber),
+                record.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                record.CheckIn is DateTime checkIn ? schedule.LocalTime(checkIn).ToString("HH:mm", CultureInfo.InvariantCulture) : "",
+                record.CheckOut is DateTime checkOut ? schedule.LocalTime(checkOut).ToString("HH:mm", CultureInfo.InvariantCulture) : "",
+                status);
+            csv.Append("\r\n");
+        }
+
+        var scope = employeeId is int id ? $"funcionario-{id}" : "equipa";
+        return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"assiduidade-{scope}.csv");
+    }
+
+    private static string CsvField(string value)
+    {
+        var trimmed = value.TrimStart();
+        if (trimmed.StartsWith('=') || trimmed.StartsWith('+') || trimmed.StartsWith('-') || trimmed.StartsWith('@')
+            || value.StartsWith('\t') || value.StartsWith('\r') || value.StartsWith('\n'))
+            value = "'" + value;
+
+        return "\"" + value.Replace("\"", "\"\"") + "\"";
+    }
+
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckOut(int id){ var a=await _db.Attendances.FindAsync(id); if(a!=null){a.CheckOut=DateTime.UtcNow; await _db.SaveChangesAsync();} return RedirectToAction(nameof(Index)); }
+    public async Task<IActionResult> CheckIn(int employeeId)
+    {
+        db.Attendances.Add(schedule.CreateCheckIn(employeeId, DateTime.UtcNow));
+        await db.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckOut(int id){ var a=await db.Attendances.FindAsync(id); if(a!=null){a.CheckOut=DateTime.UtcNow; await db.SaveChangesAsync();} return RedirectToAction(nameof(Index)); }
 }
 [Authorize(Roles = "Administrator,HRManager")]
 public class LeaveRequestsController : Controller
@@ -197,7 +272,7 @@ public class ReportsController : Controller
 {
     private readonly ApplicationDbContext _db;
     public ReportsController(ApplicationDbContext db) => _db = db;
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index([FromServices] AttendanceSchedule schedule)
     {
         ViewBag.Employees = await _db.Employees.CountAsync();
         ViewBag.Departments = await _db.Departments.CountAsync();
@@ -205,7 +280,8 @@ public class ReportsController : Controller
         ViewBag.ActiveEmployees = await _db.Employees.CountAsync(employee => employee.Status == EmployeeStatus.Active);
         ViewBag.Positions = await _db.Positions.CountAsync();
         ViewBag.Documents = await _db.EmployeeDocuments.CountAsync();
-        ViewBag.PresentToday = await _db.Attendances.CountAsync(attendance => attendance.Date == DateTime.UtcNow.Date && attendance.CheckIn != null);
+        var attendanceDate = schedule.Today;
+        ViewBag.PresentToday = await _db.Attendances.CountAsync(attendance => attendance.Date == attendanceDate && attendance.CheckIn != null);
         ViewBag.ExpiredDocuments = await _db.EmployeeDocuments.CountAsync(document => document.ExpiryDate.HasValue && document.ExpiryDate.Value < DateTime.Today);
         return View("Dashboard");
     }
@@ -215,7 +291,7 @@ public class HomeController : Controller
 {
     private readonly ApplicationDbContext _db;
     public HomeController(ApplicationDbContext db) => _db = db;
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index([FromServices] AttendanceSchedule schedule)
     {
         if (User.IsInRole("Employee"))
             return RedirectToAction("Index", "EmployeePortal");
@@ -223,6 +299,7 @@ public class HomeController : Controller
             return Forbid();
 
         var today = DateTime.Today;
+        var attendanceDate = schedule.Today;
         var tomorrow = today.AddDays(1);
         var monthStart = new DateTime(today.Year, today.Month, 1);
         var monthEnd = monthStart.AddMonths(1);
@@ -295,8 +372,8 @@ public class HomeController : Controller
             InactiveEmployees = await _db.Employees.CountAsync(employee => employee.Status == EmployeeStatus.Inactive),
             NewEmployeesThisMonth = await _db.Employees.CountAsync(employee => employee.HireDate >= monthStart && employee.HireDate < monthEnd),
             DepartmentsCount = departments.Count,
-            PresentToday = await _db.Attendances.CountAsync(attendance => attendance.Date >= today && attendance.Date < tomorrow && attendance.CheckIn != null),
-            AbsentToday = await _db.Attendances.CountAsync(attendance => attendance.Date >= today && attendance.Date < tomorrow && attendance.Status == AttendanceStatus.Absent),
+            PresentToday = await _db.Attendances.CountAsync(attendance => attendance.Date == attendanceDate && attendance.CheckIn != null),
+            AbsentToday = await _db.Attendances.CountAsync(attendance => attendance.Date == attendanceDate && attendance.Status == AttendanceStatus.Absent),
             OnLeaveToday = await _db.LeaveRequests.CountAsync(leave => leave.Status == LeaveStatus.Approved && leave.StartDate < tomorrow && leave.EndDate >= today),
             PendingLeaveRequests = await _db.LeaveRequests.CountAsync(leave => leave.Status == LeaveStatus.Pending),
             CurrentMonthPayroll = payrollRows.Where(row => row.Year == today.Year && row.Month == today.Month).Sum(row => row.BaseSalary + row.Bonuses - row.Deductions),

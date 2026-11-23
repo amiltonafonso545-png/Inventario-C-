@@ -17,12 +17,14 @@ public sealed class EmployeePortalController : Controller
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly EmployeeDocumentStorage _documentStorage;
+    private readonly AttendanceSchedule _attendanceSchedule;
 
-    public EmployeePortalController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, EmployeeDocumentStorage documentStorage)
+    public EmployeePortalController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, EmployeeDocumentStorage documentStorage, AttendanceSchedule attendanceSchedule)
     {
         _db = db;
         _userManager = userManager;
         _documentStorage = documentStorage;
+        _attendanceSchedule = attendanceSchedule;
     }
 
     [HttpGet]
@@ -37,7 +39,7 @@ public sealed class EmployeePortalController : Controller
             return View("Dashboard", new EmployeePortalViewModel { Today = DateTime.Today });
         }
 
-        var today = DateTime.UtcNow.Date;
+        var today = _attendanceSchedule.Today;
         var todayAttendance = await _db.Attendances
             .FirstOrDefaultAsync(item => item.EmployeeId == employee.Id && item.Date == today);
         var leaves = await _db.LeaveRequests
@@ -110,7 +112,7 @@ public sealed class EmployeePortalController : Controller
         if (employee is null)
             return View(new EmployeeAttendancePageViewModel());
 
-        var today = DateTime.UtcNow.Date;
+        var today = _attendanceSchedule.Today;
         var todayAttendance = await _db.Attendances
             .FirstOrDefaultAsync(item => item.EmployeeId == employee.Id && item.Date == today);
         var history = await _db.Attendances
@@ -327,7 +329,8 @@ public sealed class EmployeePortalController : Controller
         var employee = await GetCurrentEmployeeAsync();
         if (employee is null) return Forbid();
 
-        var today = DateTime.UtcNow.Date;
+        var checkIn = _attendanceSchedule.CreateCheckIn(employee.Id, DateTime.UtcNow);
+        var today = checkIn.Date;
         var record = await _db.Attendances.FirstOrDefaultAsync(item => item.EmployeeId == employee.Id && item.Date == today);
         if (record is not null)
         {
@@ -335,14 +338,7 @@ public sealed class EmployeePortalController : Controller
             return RedirectToAction(nameof(Attendance));
         }
 
-        var now = DateTime.UtcNow;
-        _db.Attendances.Add(new Attendance
-        {
-            EmployeeId = employee.Id,
-            Date = today,
-            CheckIn = now,
-            Status = AttendanceStatus.Present
-        });
+        _db.Attendances.Add(checkIn);
         await _db.SaveChangesAsync();
         TempData["PortalMessage"] = "Entrada registada.";
             return RedirectToAction(nameof(Attendance));
@@ -354,7 +350,7 @@ public sealed class EmployeePortalController : Controller
         var employee = await GetCurrentEmployeeAsync();
         if (employee is null) return Forbid();
 
-        var today = DateTime.UtcNow.Date;
+        var today = _attendanceSchedule.Today;
         var record = await _db.Attendances.FirstOrDefaultAsync(item => item.EmployeeId == employee.Id && item.Date == today);
         if (record is null || record.CheckIn is null || record.CheckOut is not null)
         {

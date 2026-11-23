@@ -199,6 +199,56 @@ a { color: var(--brand); }
 .workspace-actions { display: flex; justify-content: flex-end; gap: 5px; white-space: nowrap; }
 .workspace-actions form { margin: 0; }
 .workspace-actions .btn { font-size: 9px; }
+.attendance-filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 12px 17px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--brand) 5%, var(--surface));
+}
+.attendance-filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.attendance-filter:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+}
+.attendance-filter[aria-current="page"] {
+  color: #fff;
+  background: var(--brand);
+}
+.attendance-filter:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.attendance-export {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 0 17px 14px;
+}
+.attendance-export-scope {
+  width: min(100%, 260px);
+}
+.attendance-export .form-label {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
 .workspace-empty { display: grid; justify-items: center; gap: 6px; padding: 34px 16px; color: var(--muted); text-align: center; }
 .workspace-empty i { color: #8791e6; font-size: 27px; }
 .workspace-empty strong { color: var(--ink); font-size: 12px; }

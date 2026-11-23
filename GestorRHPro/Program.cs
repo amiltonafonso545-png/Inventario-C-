@@ -43,6 +43,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 builder.Services.AddScoped<EmployeeDocumentStorage>();
+builder.Services.AddSingleton<AttendanceSchedule>();
 
 var keyRingPath = builder.Configuration["DataProtection:KeysPath"];
 if (string.IsNullOrWhiteSpace(keyRingPath) && !builder.Environment.IsDevelopment())
